@@ -77,6 +77,24 @@ class TestMerkl(unittest.TestCase):
             def _node4(input_value, k):
                 return input_value, 3
 
+    def test_pipelines(self):
+        @node(outs=lambda input_values: len(input_values))
+        def _node1(input_values):
+            return [val**2 for val in input_values]
+
+        import math
+        @node
+        def _node2(input_value):
+            return math.sqrt(input_value)
+
+        vals = [1, 1, 1, 4, 5, 6]
+        outs_stage1 = _node1(vals)
+        outs_stage2 = [_node2(val) for val in outs_stage1]
+        self.assertEqual([out.get() for out in outs_stage2], vals)
+
+        # Test that all hashes are different
+        self.assertEqual(len(set(out.hash for out in outs_stage2)), len(vals))
+
     def test_future_operator_access(self):
         # Test that MerklFuture cannot be accessed by checking some operators
         future = embed_bert('sentence')
@@ -100,7 +118,6 @@ class TestMerkl(unittest.TestCase):
 
         with self.assertRaises(MerklFuture.MerklFutureAccessException):
             future += 1
-
 
 
 if __name__ == '__main__':
