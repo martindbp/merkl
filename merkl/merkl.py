@@ -1,8 +1,9 @@
 import sys
 import json
 import hashlib
+from enum import Enum
 from warnings import warn
-from inspect import signature
+from inspect import signature, getsource
 from functools import wraps
 from .serializers import PickleSerializer
 from .utils import doublewrap, OPERATORS, nested_map
@@ -10,6 +11,9 @@ from .utils import doublewrap, OPERATORS, nested_map
 # Cache of code read from function files
 CODE_CACHE = {}
 
+class HashMode(Enum):
+    FILE = 1
+    FUNCTION = 2
 
 def map_merkl_future_to_value(val):
     if isinstance(val, MerklFuture):
@@ -91,21 +95,25 @@ for name in OPERATORS:
 
 
 @doublewrap
-def node(f, outs=None, out_serializers={}, out_cache_policy={}):
+def node(f, outs=None, hash_mode=HashMode.FILE, out_serializers={}, out_cache_policy={}):
     sig = signature(f)
     if callable(outs):
         outs_sig = signature(outs)
         if outs_sig != sig:
             raise Exception(f'`outs` signature {outs_sig} differs from function signature {sig}')
 
+    f_filename = f.__code__.co_filename
+    if hash_mode == HashMode.FILE:
+        code = CODE_CACHE.get(f_filename)
+        if code is None:
+            with open(f_filename, 'r') as code_file:
+                code = code_file.read()
+    else:
+        #TODO: remove identation
+        code = getsource(f)
+
     @wraps(f)
     def wrap(*args, **kwargs):
-        fn_filename = f.__code__.co_filename
-        code = CODE_CACHE.get(fn_filename)
-        if code is None:
-            with open(fn_filename, 'r') as code_file:
-                code = code_file.read()
-
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
 

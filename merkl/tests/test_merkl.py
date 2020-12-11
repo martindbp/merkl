@@ -5,7 +5,7 @@ from io import StringIO
 from nodes.embed_bert import embed_bert, embed_bert_large
 from nodes.embed_elmo import embed_elmo
 from nodes.cluster import cluster
-from merkl import MerklFuture, node
+from merkl import MerklFuture, node, HashMode
 
 
 def get_stderr(f):
@@ -94,6 +94,14 @@ class TestMerkl(unittest.TestCase):
 
         # Test that all hashes are different
         self.assertEqual(len(set(out.hash for out in outs_stage2)), len(vals))
+
+    def test_hash_modes(self):
+        def _node1(input_value):
+            return input_value, 3
+
+        _node1_file = node(hash_mode=HashMode.FILE)(_node1)
+        _node1_function = node(hash_mode=HashMode.FUNCTION)(_node1)
+        self.assertNotEqual(_node1_file('test').hash, _node1_function('test').hash)
 
     def test_future_operator_access(self):
         # Test that MerklFuture cannot be accessed by checking some operators
