@@ -2,7 +2,7 @@ from merkl import node
 import numpy as np
 
 
-@node
+@node(outs=2)
 def cluster(asd, *embedded_sentences, k=3):
     indices = list(range(len(embedded_sentences)))
     mid = len(indices)//2

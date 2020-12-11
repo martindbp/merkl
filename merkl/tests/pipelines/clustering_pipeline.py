@@ -1,16 +1,16 @@
-from embed import embed_BERT
-from cluster import cluster
+from merkl.tests.nodes.embed_bert import embed_bert
+from merkl.tests.nodes.cluster import cluster
 
 
 def clustering_pipeline():
     sentences = ['sentence1', 'sentence2', 'sentence3']
-    embedded_sentences = [embed_BERT(s) for s in sentences]
+    embedded_sentences = [embed_bert(s) for s in sentences]
     clusters = cluster(*embedded_sentences, k=2)
-    print(clusters.get())
+    #print(clusters.get())
     #print(clusters[0].hash)
     #print(clusters[1].hash)
-    #print(clusters[0].get())
-    #print(clusters[1].get())
+    print(clusters[0].get())
+    print(clusters[1].get())
     #breakpoint()
     return clusters
 

@@ -5,7 +5,7 @@ from warnings import warn
 from inspect import signature
 from functools import wraps
 from .serializers import PickleSerializer
-from .utils import doublewrap, OPERATORS
+from .utils import doublewrap, OPERATORS, nested_map
 
 # Cache for the all outputs with the respect to a function and its' args
 CODE_ARGS_CACHE = {}
@@ -22,6 +22,12 @@ class MerkleJSONEncoder(json.JSONEncoder):
         if isinstance(obj, MerklFuture):
             return {'merkl_hash': obj.hash}
         return json.JSONEncoder.default(self, obj)
+
+
+def map_merkl_future_to_value(val):
+    if isinstance(val, MerklFuture):
+        return val.get()
+    return val
 
 
 class MerklFuture:
@@ -51,24 +57,13 @@ class MerklFuture:
         self.bound_args = bound_args
 
     def get(self):
-        for arg_name, val in sorted(self.sig.parameters.items()):
-            arg = self.bound_args.arguments.get(arg_name)
-            if val.kind == val.VAR_POSITIONAL:
-                # It's an *args type parameter
-                new_args = []
-                for i, a in enumerate(arg):
-                    if isinstance(a, MerklFuture):
-                        a = a.get()
-                    new_args.append(a)
-                self.bound_args.arguments[arg_name] = tuple(new_args)
-            else:
-                if isinstance(arg, MerklFuture):
-                    self.bound_args.arguments[arg_name] = arg.get()
+        evaluated_args = nested_map(self.bound_args.args, map_merkl_future_to_value)
+        evaluated_kwargs = nested_map(self.bound_args.kwargs, map_merkl_future_to_value)
 
         if self.code_args_hash in CODE_ARGS_CACHE:
             output = CODE_ARGS_CACHE.get(self.code_args_hash)
         else:
-            output = self.fn(*self.bound_args.args, **self.bound_args.kwargs)
+            output = self.fn(*evaluated_args, **evaluated_kwargs)
             CODE_ARGS_CACHE[self.code_args_hash] = output
 
         if self.output_index is not None:

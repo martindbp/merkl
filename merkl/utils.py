@@ -19,6 +19,23 @@ def doublewrap(f):
     return new_dec
 
 
+def nested_map(structure, map_function):
+    if isinstance(structure, tuple):
+        new_tuple = []
+        for value in structure:
+            new_tuple.append(nested_map(value, map_function))
+        return tuple(new_tuple)
+    elif isinstance(structure, list):
+        for i in range(len(structure)):
+            structure[i] = nested_map(structure[i], map_function)
+    elif isinstance(structure, dict):
+        new_dict = {}
+        for key, val in structure.items():
+            new_dict[key] = nested_map(val, map_function)
+
+    return map_function(structure)
+
+
 OPERATORS = [
     '__bool__',
     '__not__',
