@@ -1,5 +1,6 @@
 from functools import wraps
 
+
 def doublewrap(f):
     """
     a decorator decorator, allowing the decorator to be used as:
@@ -19,19 +20,16 @@ def doublewrap(f):
     return new_dec
 
 
-def nested_map(structure, map_function):
+def nested_map(structure, map_function, convert_tuples_to_lists=False):
     if isinstance(structure, tuple):
-        new_tuple = []
-        for value in structure:
-            new_tuple.append(nested_map(value, map_function))
+        new_tuple = [nested_map(s, map_function) for s in structure]
+        if convert_tuples_to_lists:
+            return new_tuple
         return tuple(new_tuple)
     elif isinstance(structure, list):
-        for i in range(len(structure)):
-            structure[i] = nested_map(structure[i], map_function)
+        return [nested_map(s, map_function) for s in structure]
     elif isinstance(structure, dict):
-        new_dict = {}
-        for key, val in structure.items():
-            new_dict[key] = nested_map(val, map_function)
+        return {key: nested_map(val, map_function) for key, val in structure.items()}
 
     return map_function(structure)
 

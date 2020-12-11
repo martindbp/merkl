@@ -1,4 +1,3 @@
-Combine args, code and function name into one JSON ouput and hash that -> better for debugging
 Add code_hash_mode = ['file', 'function']
 Add code_deps = [module, function]
 Read/write tracked files

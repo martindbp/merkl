@@ -17,16 +17,17 @@ CODE_CACHE = {}
 PRINT_HASHING_SEQUENCE = False
 
 
-class MerkleJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, MerklFuture):
-            return {'merkl_hash': obj.hash}
-        return json.JSONEncoder.default(self, obj)
-
-
 def map_merkl_future_to_value(val):
     if isinstance(val, MerklFuture):
         return val.get()
+    return val
+
+
+def map_merkl_future_to_hash(val):
+    if isinstance(val, MerklFuture):
+        return {'merkl_hash': val.hash.decode('utf-8')}
+    elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
+        print(f'WARNING: input arg to function: {str(val)} is neither str, int or float', file=sys.stderr)
     return val
 
 
@@ -91,22 +92,6 @@ for name in OPERATORS:
     setattr(MerklFuture, name, MerklFuture.deny_access)
 
 
-def update(m, b):
-    # Convenience function to print the bytes used to hash in order
-    if PRINT_HASHING_SEQUENCE:
-        print(b)
-    m.update(b)
-
-
-def hash_argument(m, arg):
-    if isinstance(arg, MerklFuture):
-        update(m, bytes(arg.hash, 'utf-8'))
-    else:
-        if not (isinstance(arg, str) or isinstance(arg, int) or isinstance(arg, float)):
-            print(f'WARNING: input arg to function: {str(arg)} is neither str, int or float')
-        update(m, bytes(str(arg), 'utf-8'))
-
-
 @doublewrap
 def node(f, outs=None, out_serializers={}, out_cache_policy={}):
     sig = signature(f)
@@ -117,30 +102,24 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
 
     @wraps(f)
     def wrap(*args, **kwargs):
-        # Calculate hash for code and args together
-        m = hashlib.sha256()
-        # Need to use name, since multiple function can be present in single file
-        m.update(bytes(f.__name__, 'utf-8'))
-
         fn_filename = f.__code__.co_filename
         code = CODE_CACHE.get(fn_filename)
         if code is None:
-            with open(fn_filename, 'rb') as code_file:
+            with open(fn_filename, 'r') as code_file:
                 code = code_file.read()
-        update(m, code)
 
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
-        for arg_name, val in sorted(sig.parameters.items()):
-            arg = bound_args.arguments.get(arg_name)
-            update(m, bytes(arg_name, 'utf-8'))
-            if val.kind == val.VAR_POSITIONAL:
-                # It's an *args type parameter
-                for a in arg:
-                    hash_argument(m, a)
-            else:
-                hash_argument(m, arg)
 
+        # Hash args, kwargs and code together
+        hash_data = {
+            'args': nested_map(bound_args.args, map_merkl_future_to_hash, convert_tuples_to_lists=True),
+            'kwargs': nested_map(bound_args.kwargs, map_merkl_future_to_hash, convert_tuples_to_lists=True),
+            'function_name': f.__name__,
+            'function_code': code,
+        }
+        m = hashlib.sha256()
+        m.update(bytes(json.dumps(hash_data, sort_keys=True), 'utf-8'))
         code_args_hash = m.hexdigest()
 
         resolved_outs = outs
@@ -160,9 +139,9 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
         outputs = []
         for i in range(resolved_outs):
             m = hashlib.sha256()
-            update(m, bytes(code_args_hash, 'utf-8'))
+            m.update(bytes(code_args_hash, 'utf-8'))
             if resolved_outs > 1:
-                update(m, bytes(str(i), 'utf-8'))
+                m.update(bytes(str(i), 'utf-8'))
             output_hash = m.hexdigest()
             serializer = out_serializers.get(i, PickleSerializer)
             cache_policy = out_cache_policy.get(i, None)
