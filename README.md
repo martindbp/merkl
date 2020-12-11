@@ -89,7 +89,7 @@ Node functions have these restrictions:
 1. The function must be deterministic, i.e. all randomness needs to be seeded either by a constant in the function or
    by an input argument
 2. The number of outputs need to be determinable without running the body of the function. By default the decorator
-   assumes there to be a _single_ output outputs, but it can be set to another constant value in the decorator:
+   assumes there to be a _single_ output, but it can be set to another constant value in the decorator:
    ```
    @node(outs=2)
    def my_function(input_value)
@@ -101,13 +101,13 @@ Node functions have these restrictions:
    @node(outs=lambda input_value, k: k)
    def my_clustering_function(input_value, k=3)
    ```
-   Note that the input arguments may contain placeholder objects for upstream calcalations, that cannot be accessed.
+   Note that the input arguments may contain futures for upstream calcalations that cannot be accessed.
 
 The `node` decorator also takes these optional arguments:
 
 * `serializers`: a map between out index and a MerklSerializer class. The default serializer is JsonSerializer
 * `cache_policy`: either a CachePolicy object or a map between output index and CachePolicy objects
-* `code_hash_granularity`: 'function' or 'file', defaults to 'file'. This means the code in the whole file the function
+* `code_hash_mode`: CodeHashMode.[FUNCTION,FILE], defaults to FILE. This means the code in the whole file the function
   resides in is used to compute the function hash
 * `code_deps`: a list of modules or functions this function depends on for code hashing
 
@@ -116,9 +116,9 @@ The `node` decorator also takes these optional arguments:
 Pipelines can be defined anywhere, but can usefully be defined in a self-contained function, which can then be run with the `merkl
 run <module>.<function>` command, or reused in a script.
 
-When calling a Merkl node function, it returns one or several `MerklOut` _placeholder_ objects (depending on number of
-outs), which represents an output that hasn't been computed yet. In order to access the actual computed value, call
-the `.get()` method on the `MerklOut` object. This will perform the computation of the output and all needed preceding values
+When calling a Merkl node function, it returns one or several `MerklFuture` _placeholder_ objects (depending on number of
+outs), which represents an value that hasn't been computed or fetched yet. In order to access the actual value, call
+the `.get()` method on the future. This will perform the computation of the output and all needed preceding values
 recursively, using cached values when available.
 
 To persist a computed output to disk, call the `write_file(output, track=[True/False])` function. If `track=False`, the

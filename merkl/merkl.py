@@ -19,12 +19,12 @@ PRINT_HASHING_SEQUENCE = True
 
 class MerkleJSONEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, MerklOut):
+        if isinstance(obj, MerklFuture):
             return {'merkl_hash': obj.hash}
         return json.JSONEncoder.default(self, obj)
 
 
-class MerklOut:
+class MerklFuture:
     def __init__(
         self,
         fn,
@@ -54,12 +54,12 @@ class MerklOut:
                 # It's an *args type parameter
                 new_args = []
                 for i, a in enumerate(arg):
-                    if isinstance(a, MerklOut):
+                    if isinstance(a, MerklFuture):
                         a = a.get()
                     new_args.append(a)
                 self.bound_args.arguments[arg_name] = tuple(new_args)
             else:
-                if isinstance(arg, MerklOut):
+                if isinstance(arg, MerklFuture):
                     self.bound_args.arguments[arg_name] = arg.get()
 
         if self.code_args_hash in CODE_ARGS_CACHE:
@@ -94,7 +94,7 @@ def update(m, b):
 
 
 def hash_argument(m, arg):
-    if isinstance(arg, MerklOut):
+    if isinstance(arg, MerklFuture):
         update(m, bytes(arg.hash, 'utf-8'))
     else:
         if not (isinstance(arg, str) or isinstance(arg, int) or isinstance(arg, float)):
@@ -143,7 +143,7 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
             output_hash = m.hexdigest()
             serializer = out_serializers.get(i, PickleSerializer)
             cache_policy = out_cache_policy.get(i, None)
-            output = MerklOut(
+            output = MerklFuture(
                 f,
                 outs,
                 code_args_hash,
