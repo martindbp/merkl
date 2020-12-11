@@ -7,14 +7,8 @@ from functools import wraps
 from .serializers import PickleSerializer
 from .utils import doublewrap, OPERATORS, nested_map
 
-# Cache for the all outputs with the respect to a function and its' args
-CODE_ARGS_CACHE = {}
-
 # Cache of code read from function files
 CODE_CACHE = {}
-
-# Set true to print hashing bytes in sequence as they are applied
-PRINT_HASHING_SEQUENCE = False
 
 
 def map_merkl_future_to_value(val):
@@ -25,7 +19,7 @@ def map_merkl_future_to_value(val):
 
 def map_merkl_future_to_hash(val):
     if isinstance(val, MerklFuture):
-        return {'merkl_hash': val.hash.decode('utf-8')}
+        return {'merkl_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
         print(f'WARNING: input arg to function: {str(val)} is neither str, int or float', file=sys.stderr)
     return val
@@ -45,7 +39,8 @@ class MerklFuture:
         serializer,
         cache_policy,
         sig,
-        bound_args
+        bound_args,
+        outs_result_cache,
     ):
         self.fn = fn
         self.outs_was_none = outs_was_none
@@ -57,15 +52,18 @@ class MerklFuture:
         self.sig = sig
         self.bound_args = bound_args
 
+        # Cache for the all outputs with the respect to a function and its args
+        self.outs_result_cache = outs_result_cache
+
     def get(self):
         evaluated_args = nested_map(self.bound_args.args, map_merkl_future_to_value)
         evaluated_kwargs = nested_map(self.bound_args.kwargs, map_merkl_future_to_value)
 
-        if self.code_args_hash in CODE_ARGS_CACHE:
-            output = CODE_ARGS_CACHE.get(self.code_args_hash)
+        if self.code_args_hash in self.outs_result_cache:
+            output = self.outs_result_cache.get(self.code_args_hash)
         else:
             output = self.fn(*evaluated_args, **evaluated_kwargs)
-            CODE_ARGS_CACHE[self.code_args_hash] = output
+            self.outs_result_cache[self.code_args_hash] = output
 
         if self.output_index is not None:
             return output[self.output_index]
@@ -137,6 +135,7 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
             raise Exception('`outs` has to be resolved to an integer or None')
 
         outputs = []
+        outs_result_cache = {}
         for i in range(resolved_outs):
             m = hashlib.sha256()
             m.update(bytes(code_args_hash, 'utf-8'))
@@ -155,6 +154,7 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
                 cache_policy,
                 sig,
                 bound_args,
+                outs_result_cache,
             )
             outputs.append(output)
 
