@@ -5,7 +5,7 @@ from warnings import warn
 from inspect import signature
 from functools import wraps
 from .serializers import PickleSerializer
-from .utils import doublewrap
+from .utils import doublewrap, OPERATORS
 
 # Cache for the all outputs with the respect to a function and its' args
 CODE_ARGS_CACHE = {}
@@ -14,7 +14,7 @@ CODE_ARGS_CACHE = {}
 CODE_CACHE = {}
 
 # Set true to print hashing bytes in sequence as they are applied
-PRINT_HASHING_SEQUENCE = True
+PRINT_HASHING_SEQUENCE = False
 
 
 class MerkleJSONEncoder(json.JSONEncoder):
@@ -25,6 +25,9 @@ class MerkleJSONEncoder(json.JSONEncoder):
 
 
 class MerklFuture:
+    class MerklFutureAccessException(BaseException):
+        pass
+
     def __init__(
         self,
         fn,
@@ -85,6 +88,13 @@ class MerklFuture:
 
         return output
 
+    def deny_access(self, *args, **kwargs):
+        raise self.MerklFutureAccessException
+
+# Override all the operators of MerklFuture to raise a specific exception when used
+for name in OPERATORS:
+    setattr(MerklFuture, name, MerklFuture.deny_access)
+
 
 def update(m, b):
     # Convenience function to print the bytes used to hash in order
@@ -109,7 +119,7 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
         # Calculate hash for code and args together
         m = hashlib.sha256()
         # Need to use name, since multiple function can be present in single file
-        m.update(bytes(f.__name__, 'utf-8')
+        m.update(bytes(f.__name__, 'utf-8'))
 
         fn_filename = f.__code__.co_filename
         code = CODE_CACHE.get(fn_filename)

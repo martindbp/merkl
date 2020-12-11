@@ -1,2 +1,2 @@
-from .merkl import node
+from .merkl import node, MerklFuture
 from .serializers import PickleSerializer
