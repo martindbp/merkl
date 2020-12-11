@@ -7,7 +7,3 @@ Read/write tracked files
 Add nested_map(struct, f) function which takes a nested structure and calls `f` on all non-list/tuple/dict values
 Use nested_map to replace MerklFuture objects with values in input args
 Use a more local cache for getting the output value for different output indices
-//Override MerklFuture __hash__ and __eq__ and other operators to raise an error if used (so that they can't be added to
-sets, or used in control flow)
-
-Add `outs` as a function with same signature as original function (raise error if not)

@@ -31,7 +31,7 @@ class MerklFuture:
     def __init__(
         self,
         fn,
-        outs,
+        outs_was_none,
         code_args_hash,
         output_index,
         output_hash,
@@ -41,7 +41,7 @@ class MerklFuture:
         bound_args
     ):
         self.fn = fn
-        self.outs = outs
+        self.outs_was_none = outs_was_none
         self.code_args_hash = code_args_hash
         self.output_index = output_index
         self.hash = output_hash
@@ -74,7 +74,7 @@ class MerklFuture:
         if self.output_index is not None:
             return output[self.output_index]
 
-        if isinstance(output, tuple) and self.outs == None:
+        if isinstance(output, tuple) and self.outs_was_none:
             print(
                 (
                     f'WARNING: Output of function `{self.fn.__name__}` is a tuple, but function only has one out by default. '
@@ -114,6 +114,12 @@ def hash_argument(m, arg):
 
 @doublewrap
 def node(f, outs=None, out_serializers={}, out_cache_policy={}):
+    sig = signature(f)
+    if callable(outs):
+        outs_sig = signature(outs)
+        if outs_sig != sig:
+            raise Exception(f'`outs` signature {outs_sig} differs from function signature {sig}')
+
     @wraps(f)
     def wrap(*args, **kwargs):
         # Calculate hash for code and args together
@@ -128,7 +134,6 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
                 code = code_file.read()
         update(m, code)
 
-        sig = signature(f)
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
         for arg_name, val in sorted(sig.parameters.items()):
@@ -143,21 +148,34 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
 
         code_args_hash = m.hexdigest()
 
+        resolved_outs = outs
+        outs_was_none = False
+        if callable(outs):
+            resolved_outs = outs(*args, **kwargs)
+
+        if isinstance(resolved_outs, int):
+            if resolved_outs <= 0:
+                raise Exception('Number of outs has to be greater than zero')
+        elif resolved_outs == None:
+            resolved_outs = 1
+            outs_was_none = True
+        else:
+            raise Exception('`outs` has to be resolved to an integer or None')
+
         outputs = []
-        num_outs = outs or 1  # outs can be None
-        for i in range(num_outs):
+        for i in range(resolved_outs):
             m = hashlib.sha256()
             update(m, bytes(code_args_hash, 'utf-8'))
-            if num_outs > 1:
+            if resolved_outs > 1:
                 update(m, bytes(str(i), 'utf-8'))
             output_hash = m.hexdigest()
             serializer = out_serializers.get(i, PickleSerializer)
             cache_policy = out_cache_policy.get(i, None)
             output = MerklFuture(
                 f,
-                outs,
+                outs_was_none,
                 code_args_hash,
-                i if num_outs > 1 else None,
+                i if resolved_outs > 1 else None,
                 output_hash,
                 serializer,
                 cache_policy,
@@ -166,7 +184,7 @@ def node(f, outs=None, out_serializers={}, out_cache_policy={}):
             )
             outputs.append(output)
 
-        if num_outs == 1:
+        if resolved_outs == 1:
             return outputs[0]
         return outputs
 

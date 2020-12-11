@@ -63,6 +63,20 @@ class TestMerkl(unittest.TestCase):
         self.assertEqual(len(outs), 2)
         self.assertNotEqual(outs[0].hash, outs[1].hash)
 
+        # Test `outs` as a function
+        @node(outs=lambda input_value, k: k)
+        def _node3(input_value, k):
+            return input_value, 3
+
+        outs = _node3('test', 4)
+        self.assertEqual(len(outs), 4)
+
+        # Test that the wrong function signature fails
+        with self.assertRaises(Exception):
+            @node(outs=lambda inpoot_value, k: k)
+            def _node4(input_value, k):
+                return input_value, 3
+
     def test_future_operator_access(self):
         # Test that MerklFuture cannot be accessed by checking some operators
         future = embed_bert('sentence')
