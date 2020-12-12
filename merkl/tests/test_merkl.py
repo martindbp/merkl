@@ -103,6 +103,12 @@ class TestMerkl(unittest.TestCase):
         _node1_function = node(hash_mode=HashMode.FUNCTION)(_node1)
         self.assertNotEqual(_node1_file('test').hash, _node1_function('test').hash)
 
+        # Test that two identical function in two different files (with slightly different content)
+        # are the same if HashMode.FUNCTION is used
+        from nodes.identical_node1 import identical_node as identical_node1
+        from nodes.identical_node2 import identical_node as identical_node2
+        self.assertEqual(identical_node1('test').hash, identical_node2('test').hash)
+
     def test_future_operator_access(self):
         # Test that MerklFuture cannot be accessed by checking some operators
         future = embed_bert('sentence')
