@@ -107,9 +107,9 @@ The `node` decorator also takes these optional arguments:
 
 * `serializers`: a map between out index and a MerklSerializer class. The default serializer is JsonSerializer
 * `cache_policy`: either a CachePolicy object or a map between output index and CachePolicy objects
-* `code_hash_mode`: CodeHashMode.[FUNCTION,FILE], defaults to FILE. This means the code in the whole file the function
+* `code_hash_mode`: CodeHashMode.[FUNCTION,MODULE], defaults to MODULE. This means the code in the whole file the function
   resides in is used to compute the function hash
-* `code_deps`: a list of modules or functions this function depends on for code hashing
+* `code_deps`: a list of modules functions, strings or bytes this function depends on for code hashing
 
 ## Pipelines
 

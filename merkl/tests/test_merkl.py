@@ -6,6 +6,7 @@ from nodes.embed_bert import embed_bert, embed_bert_large
 from nodes.embed_elmo import embed_elmo
 from nodes.cluster import cluster
 from merkl import MerklFuture, node, HashMode
+from merkl.exceptions import *
 
 
 def get_stderr(f):
@@ -37,7 +38,29 @@ class TestMerkl(unittest.TestCase):
         # Test that hash is different with different function in same file
         self.assertNotEqual(embed_bert('sentence').hash, embed_bert_large('sentence').hash)
 
+        # Test that we raise the right exception when trying to pass something non-serializable to a node
+        class MyClass:
+            pass
+
+        with self.assertRaises(NonSerializableArgException):
+            embed_bert(MyClass())
+
     def test_outs(self):
+        with self.assertRaises(NonPositiveOutsException):
+            @node(outs=0)
+            def _node_zero_outs(input_value):
+                return input_value, 3
+
+        with self.assertRaises(NonPositiveOutsException):
+            @node(outs=-1)
+            def _node_negative_outs(input_value):
+                return input_value, 3
+
+        with self.assertRaises(BadOutsValueException):
+            @node(outs=1.0)
+            def _node_float_outs(input_value):
+                return input_value, 3
+
         @node
         def _node1(input_value):
             return input_value, 3
@@ -72,7 +95,7 @@ class TestMerkl(unittest.TestCase):
         self.assertEqual(len(outs), 4)
 
         # Test that the wrong function signature fails
-        with self.assertRaises(Exception):
+        with self.assertRaises(NonMatchingSignaturesException):
             @node(outs=lambda inpoot_value, k: k)
             def _node4(input_value, k):
                 return input_value, 3
@@ -99,38 +122,61 @@ class TestMerkl(unittest.TestCase):
         def _node1(input_value):
             return input_value, 3
 
-        _node1_file = node(hash_mode=HashMode.FILE)(_node1)
+        _node1_file = node(hash_mode=HashMode.MODULE)(_node1)
         _node1_function = node(hash_mode=HashMode.FUNCTION)(_node1)
         self.assertNotEqual(_node1_file('test').hash, _node1_function('test').hash)
 
-        # Test that two identical function in two different files (with slightly different content)
+        # Test that two identical functions in two different files (with slightly different content)
         # are the same if HashMode.FUNCTION is used
         from nodes.identical_node1 import identical_node as identical_node1
         from nodes.identical_node2 import identical_node as identical_node2
         self.assertEqual(identical_node1('test').hash, identical_node2('test').hash)
 
+        def fn_dep1(arg1, arg2):
+            return arg1 + arg2
+
+        def fn_dep2(arg1, arg2):
+            return arg1 + arg2
+
+        from nodes import embed_bert as embed_bert_module
+        _node1_module_dep = node(deps=[embed_bert_module])(_node1)
+        _node1_function_dep1 = node(deps=[fn_dep1])(_node1)
+        _node1_function_dep2 = node(deps=[fn_dep2])(_node1)
+        _node1_string_dep = node(deps=['val1'])(_node1)
+        _node1_bytes_dep = node(deps=[b'val1'])(_node1)
+        hashes = [
+            _node1_module_dep('test').hash,
+            _node1_function_dep1('test').hash,
+            _node1_function_dep2('test').hash,
+            _node1_string_dep('test').hash,
+            _node1_bytes_dep('test').hash,
+        ]
+        # Check that all hashes are unique, except the last two which are equal
+        self.assertEqual(len(set(hashes[:3])), 3)
+        self.assertEqual(len(set(hashes[3:])), 1)
+
     def test_future_operator_access(self):
         # Test that MerklFuture cannot be accessed by checking some operators
         future = embed_bert('sentence')
-        with self.assertRaises(MerklFuture.MerklFutureAccessException):
+        with self.assertRaises(FutureAccessException):
             # Can't be added to set
             set([future])
 
-        with self.assertRaises(MerklFuture.MerklFutureAccessException):
+        with self.assertRaises(FutureAccessException):
             # Can't be used as a truth value in statements
             if future:
                 print('hello world')
 
-        with self.assertRaises(MerklFuture.MerklFutureAccessException):
+        with self.assertRaises(FutureAccessException):
             # Can't be iterated over
             for x in future:
                 print('hello world')
 
-        with self.assertRaises(MerklFuture.MerklFutureAccessException):
+        with self.assertRaises(FutureAccessException):
             # Can't get a length from it
             print(len(future))
 
-        with self.assertRaises(MerklFuture.MerklFutureAccessException):
+        with self.assertRaises(FutureAccessException):
             future += 1
 
 

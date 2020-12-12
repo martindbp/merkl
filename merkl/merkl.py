@@ -3,17 +3,20 @@ import json
 import hashlib
 from enum import Enum
 from warnings import warn
-from inspect import signature, getsource
+from inspect import signature, getsource, isfunction, ismodule
 from functools import wraps
 from .serializers import PickleSerializer
 from .utils import doublewrap, OPERATORS, nested_map
+from .exceptions import *
 
 # Cache of code read from function files
 CODE_CACHE = {}
 
+
 class HashMode(Enum):
-    FILE = 1
+    MODULE = 1
     FUNCTION = 2
+
 
 def map_merkl_future_to_value(val):
     if isinstance(val, MerklFuture):
@@ -25,14 +28,11 @@ def map_merkl_future_to_hash(val):
     if isinstance(val, MerklFuture):
         return {'merkl_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
-        print(f'WARNING: input arg to function: {str(val)} is neither str, int or float', file=sys.stderr)
+        raise NonSerializableArgException(f'Input arg to function: {str(val)} is neither str, int or float')
     return val
 
 
 class MerklFuture:
-    class MerklFutureAccessException(BaseException):
-        pass
-
     def __init__(
         self,
         fn,
@@ -87,7 +87,7 @@ class MerklFuture:
         return output
 
     def deny_access(self, *args, **kwargs):
-        raise self.MerklFutureAccessException
+        raise FutureAccessException()
 
 # Override all the operators of MerklFuture to raise a specific exception when used
 for name in OPERATORS:
@@ -95,15 +95,34 @@ for name in OPERATORS:
 
 
 @doublewrap
-def node(f, outs=None, hash_mode=HashMode.FILE, out_serializers={}, out_cache_policy={}):
+def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, out_cache_policy={}):
     sig = signature(f)
-    if callable(outs):
+
+    # Validate and outs
+    if isinstance(outs, int):
+        if outs <= 0:
+            raise NonPositiveOutsException('Number of outs has to be greater than zero')
+    elif callable(outs):
         outs_sig = signature(outs)
         if outs_sig != sig:
-            raise Exception(f'`outs` signature {outs_sig} differs from function signature {sig}')
+            raise NonMatchingSignaturesException(f'`outs` signature {outs_sig} differs from function signature {sig}')
+    elif outs == None:
+        pass  # Nothing to do
+    else:
+        raise BadOutsValueException('`outs` has to be resolved to an integer or None')
+
+    # Validate and resolve deps
+    for i in range(len(deps)):
+        dep = deps[i]
+        if isfunction(dep) or ismodule(dep):
+            deps[i] = getsource(dep)
+        elif isinstance(dep, bytes):
+            deps[i] = dep.decode('utf-8')
+        elif not isinstance(dep, str):
+            raise NonSerializableFunctionDepException(f'Function dependency has to be either a function, module, string or bytes object')
 
     f_filename = f.__code__.co_filename
-    if hash_mode == HashMode.FILE:
+    if hash_mode == HashMode.MODULE:
         code = CODE_CACHE.get(f_filename)
         if code is None:
             with open(f_filename, 'r') as code_file:
@@ -123,6 +142,7 @@ def node(f, outs=None, hash_mode=HashMode.FILE, out_serializers={}, out_cache_po
             'kwargs': nested_map(bound_args.kwargs, map_merkl_future_to_hash, convert_tuples_to_lists=True),
             'function_name': f.__name__,
             'function_code': code,
+            'function_deps': deps,
         }
         m = hashlib.sha256()
         m.update(bytes(json.dumps(hash_data, sort_keys=True), 'utf-8'))
@@ -135,12 +155,12 @@ def node(f, outs=None, hash_mode=HashMode.FILE, out_serializers={}, out_cache_po
 
         if isinstance(resolved_outs, int):
             if resolved_outs <= 0:
-                raise Exception('Number of outs has to be greater than zero')
+                raise NonPositiveOutsException('Number of outs has to be greater than zero')
         elif resolved_outs == None:
             resolved_outs = 1
             outs_was_none = True
         else:
-            raise Exception('`outs` has to be resolved to an integer or None')
+            raise BadOutsValueException('`outs` has to be resolved to an integer or None')
 
         outputs = []
         outs_result_cache = {}
