@@ -1,9 +1,9 @@
-# Merkl - track ML data, models and create cached pipelines
+# MerkL - track ML data, models and create cached pipelines
 
-Merkl is a tool for tracking large data (data sets, models) in git, and creating ML pipelines in pure Python code with
+MerkL is a tool for tracking large data (data sets, models) in git, and creating ML pipelines in pure Python code with
 cachable intermediate and final results, suitable both for development and production.
 
-## What problems does Merkl solve?
+## What problems does MerkL solve?
 
 There are a few problems when developing, deploying and productionizing ML models and pipelines:
 
@@ -15,7 +15,7 @@ There are a few problems when developing, deploying and productionizing ML model
 * We want to be able to create a pipeline during development, and easily deploy it without having to reimplement it
 * Pipeline results from production should be easily reproducible in development
 
-Merkl tries to solve these issues by:
+MerkL tries to solve these issues by:
 
 1. Providing simple tools to offload the storage of large files to e.g. S3 and only keep references in the git repository
 2. Providing a way to chain together Python functions into pipelines, and fetch cached results without first having to executing the functions
@@ -23,15 +23,15 @@ Merkl tries to solve these issues by:
 
 ## Technical details
 
-Merkl is inspired by [DVC](http://dvc.org) and provides much of the same functionality, but differs in a few ways:
+MerkL is inspired by [DVC](http://dvc.org) and provides much of the same functionality, but differs in a few ways:
 
-1. Merkl pipelines and functions are defined in pure Python and can be run from the command line as well as from a script.
+1. MerkL pipelines and functions are defined in pure Python and can be run from the command line as well as from a script.
    Pipelines are thus suitable to be served from a web server without incurring the overhead of script start-up
    time or loading of dependencies for each invocation.
-2. Merkl defines a _Merkle DAG_ (Directed Asyclic Graph), also known as _block-chain_, consisting of the initial data,
+2. MerkL defines a _MerkLe DAG_ (Directed Asyclic Graph), also known as _block-chain_, consisting of the initial data,
    code and output hashes. The output hash are are the combined hashes of the inputs, the code, and the output index.
    All intermediate and final output hashes can therefore be calculated without having to execute any function body
-   code. Merkl can then easily check if these values exist in the cache without the need for external logs of pipeline results.
+   code. MerkL can then easily check if these values exist in the cache without the need for external logs of pipeline results.
 3. Since pipelines are defined in code, one can create dynamic pipelines, e.g functions with
    variable number of inputs and outputs. This is possible since all normal control structures (if, for, while) are
    available when defining the pipeline in code.
@@ -39,17 +39,17 @@ Merkl is inspired by [DVC](http://dvc.org) and provides much of the same functio
    calls (and cached by default), it is not mandatory to write the output to file.
 5. Breakpoints and debugging works as usual since the pipeline and nodes run in a single Python script.
 
-Besides this core functionality, Merkl provides some simple commands for tracking files and pushing/pulling them from
+Besides this core functionality, MerkL provides some simple commands for tracking files and pushing/pulling them from
 remote storage.
 
 ## Commands
 
 ### `merkl init`
-Creates a Merkl repository in the current directory. This creates the hidden `.merkl` folder which contains the local
+Creates a MerkL repository in the current directory. This creates the hidden `.merkl` folder which contains the local
 cache and the `config` file. The `.merkl` directory is also added to the .gitignore if the file exists.
 
 ### `merkl track <file>`
-Merkl provides this command to move large files such as ML data sets or models to a cache folder outside of git, and track the file using its content hash instead. The steps that the command executes are:
+MerkL provides this command to move large files such as ML data sets or models to a cache folder outside of git, and track the file using its content hash instead. The steps that the command executes are:
 
 1. Hash the file
 2. Create a new file `<file>.merkl` containing the file hash and timestamp
@@ -105,7 +105,7 @@ Node functions have these restrictions:
 
 The `node` decorator also takes these optional arguments:
 
-* `serializers`: a map between out index and a MerklSerializer class. The default serializer is JsonSerializer
+* `serializers`: a map between out index and a MerkLSerializer class. The default serializer is JsonSerializer
 * `cache_policy`: either a CachePolicy object or a map between output index and CachePolicy objects
 * `code_hash_mode`: CodeHashMode.[FUNCTION,MODULE], defaults to MODULE. This means the code in the whole file the function
   resides in is used to compute the function hash
@@ -116,7 +116,7 @@ The `node` decorator also takes these optional arguments:
 Pipelines can be defined anywhere, but can usefully be defined in a self-contained function, which can then be run with the `merkl
 run <module>.<function>` command, or reused in a script.
 
-When calling a Merkl node function, it returns one or several `MerklFuture` _placeholder_ objects (depending on number of
+When calling a MerkL node function, it returns one or several `MerkLFuture` _placeholder_ objects (depending on number of
 outs), which represents an value that hasn't been computed or fetched yet. In order to access the actual value, call
 the `.get()` method on the future. This will perform the computation of the output and all needed preceding values
 recursively, using cached values when available.

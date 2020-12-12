@@ -19,6 +19,6 @@ class RunAPI:
 
         module = import_module(module_name)
         function = getattr(module, function_name)
-        # Function output values may contain MerklFutures, so wrap the function to evaluate them
+        # Function output values may contain MerkLFutures, so wrap the function to evaluate them
         function = evaluate_futures(function)
         clize.run(function, args=['merkl-run', *self.unknown_args])

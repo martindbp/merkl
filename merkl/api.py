@@ -1,4 +1,4 @@
 from merkl.api_run import RunAPI
 
-class MerklAPI:
+class MerkLAPI:
     run = RunAPI()

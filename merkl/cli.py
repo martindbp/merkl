@@ -3,11 +3,11 @@ import sys
 import argparse
 from pathlib import Path
 
-from merkl.api import MerklAPI
+from merkl.api import MerkLAPI
 
 def main():
     cwd = Path.cwd()
-    desc = 'Merkl CLI'
+    desc = 'MerkL CLI'
 
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument(
@@ -49,7 +49,7 @@ def main():
         #print(merkl.__version__)
         exit(0)
 
-    api = MerklAPI()
+    api = MerkLAPI()
     api_route = getattr(api, args.command)
     api_route.unknown_args = unknown_args
     route = getattr(api_route, args.subcommand)

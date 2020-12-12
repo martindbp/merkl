@@ -5,7 +5,7 @@ from io import StringIO
 from nodes.embed_bert import embed_bert, embed_bert_large
 from nodes.embed_elmo import embed_elmo
 from nodes.cluster import cluster
-from merkl.graph import MerklFuture, node, HashMode
+from merkl.graph import MerkLFuture, node, HashMode
 from merkl.exceptions import *
 
 
@@ -23,7 +23,7 @@ def get_stderr(f):
     return out, err_output
 
 
-class TestMerkl(unittest.TestCase):
+class TestMerkL(unittest.TestCase):
 
     def test_node_hashing(self):
         # Test that hash is the same every time
@@ -67,7 +67,7 @@ class TestMerkl(unittest.TestCase):
 
         out = _node1('test')
         # Single output by default
-        self.assertTrue(isinstance(out, MerklFuture))
+        self.assertTrue(isinstance(out, MerkLFuture))
 
         # Make sure we print a warning when we try to access the value
         # (since we didn't specify number of outs explicitly, and output is a tuple)
@@ -156,7 +156,7 @@ class TestMerkl(unittest.TestCase):
         self.assertEqual(len(set(hashes[3:])), 1)
 
     def test_future_operator_access(self):
-        # Test that MerklFuture cannot be accessed by checking some operators
+        # Test that MerkLFuture cannot be accessed by checking some operators
         future = embed_bert('sentence')
         with self.assertRaises(FutureAccessException):
             # Can't be added to set

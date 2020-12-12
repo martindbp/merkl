@@ -18,20 +18,20 @@ class HashMode(Enum):
 
 
 def map_merkl_future_to_value(val):
-    if isinstance(val, MerklFuture):
+    if isinstance(val, MerkLFuture):
         return val.get()
     return val
 
 
 def map_merkl_future_to_hash(val):
-    if isinstance(val, MerklFuture):
+    if isinstance(val, MerkLFuture):
         return {'merkl_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
         raise NonSerializableArgException(f'Input arg to function: {str(val)} is neither str, int or float')
     return val
 
 
-class MerklFuture:
+class MerkLFuture:
     def __init__(
         self,
         fn,
@@ -88,9 +88,9 @@ class MerklFuture:
     def deny_access(self, *args, **kwargs):
         raise FutureAccessException()
 
-# Override all the operators of MerklFuture to raise a specific exception when used
+# Override all the operators of MerkLFuture to raise a specific exception when used
 for name in OPERATORS:
-    setattr(MerklFuture, name, MerklFuture.deny_access)
+    setattr(MerkLFuture, name, MerkLFuture.deny_access)
 
 
 @doublewrap
@@ -164,7 +164,7 @@ def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
             output_hash = m.hexdigest()
             serializer = out_serializers.get(i, PickleSerializer)
             cache_policy = out_cache_policy.get(i, None)
-            output = MerklFuture(
+            output = MerkLFuture(
                 f,
                 outs_was_none,
                 code_args_hash,
