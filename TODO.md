@@ -8,5 +8,6 @@ Allow nested calling of nodes, for e.g. an outer hyper-parameter optimization fu
     Add execute_inner_graph option to decorator, which runs the function at graph-building time without substituting
     MerklFutures. If a Future is accessed, we stop. Need to go through return values and substitute Futures with actual values
     for this to work.
-Unindent code before hashing, to decrease duplication
 Build CLI for `merkl run <module>.<function>`
+    If function is node, first convert Futures to values
+Add type hints / mypy

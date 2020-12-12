@@ -5,7 +5,7 @@ from io import StringIO
 from nodes.embed_bert import embed_bert, embed_bert_large
 from nodes.embed_elmo import embed_elmo
 from nodes.cluster import cluster
-from merkl import MerklFuture, node, HashMode
+from merkl.graph import MerklFuture, node, HashMode
 from merkl.exceptions import *
 
 

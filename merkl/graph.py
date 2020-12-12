@@ -6,9 +6,9 @@ from enum import Enum
 from warnings import warn
 from functools import wraps, lru_cache
 from inspect import signature, getsource, isfunction, ismodule, getmodule
-from .serializers import PickleSerializer
-from .utils import doublewrap, OPERATORS, nested_map
-from .exceptions import *
+from merkl.serializers import PickleSerializer
+from merkl.utils import doublewrap, OPERATORS, nested_map
+from merkl.exceptions import *
 
 getsource_cached = lru_cache()(getsource)
 

@@ -1,2 +1,3 @@
-from .merkl import node, MerklFuture, HashMode
-from .serializers import PickleSerializer
+from merkl.graph import node, MerklFuture, HashMode
+from merkl.serializers import PickleSerializer
+from merkl.cli import main
