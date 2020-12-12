@@ -5,39 +5,32 @@ cachable intermediate and final results, suitable both for development and produ
 
 ## What problems does MerkL solve?
 
-There are a few problems when developing, deploying and productionizing ML models and pipelines:
+These are the relevant problems MerkL tries to tackle when developing, deploying and productionizing ML models and pipelines:
 
-* Large data such as training data sets and binary models are too large to version in git
-* We want to version code and data together so that you can track experiments, deploy with confidence and know how a
-  result was calcualted (data provenance)
-* We want to be able to use the same tools (Github, CI, etc) for ML as for the rest of the product
-* In production (and development), we want to cache calculations in ML pipelines that do not need to be recalculated
+* Large training datasets and binary models are too large to version in git
+* Code and data and results need to be versioned together so that you can track experiments, deploy easily, and know how
+  a result was calculated (provenance)
+* It would be benfitial to be able to use the same tools for ML as for the rest of the product
+* In production and development, we want to cache final and intermediate results of ML pipelines
 * We want to be able to create a pipeline during development, and easily deploy it without having to reimplement it
-* Pipeline results from production should be easily reproducible in development
+* Pipeline results from production should be easily reproducible in a dev environment
 
 MerkL tries to solve these issues by:
 
-1. Providing simple tools to offload the storage of large files to e.g. S3 and only keep references in the git repository
+1. Providing a way to off-load the storage of large files and only keep shallow references in git
 2. Providing a way to chain together Python functions into pipelines, and fetch cached results without first having to executing the functions
-3. Allow pipelines to be run as scripts or deployed directly in a web server without loss of efficiency
+3. Allow pipelines to be run as scripts or deployed directly in a web server without loss of efficiency or requiring
+   changes
 
 ## Technical details
 
-MerkL is inspired by [DVC](http://dvc.org) and provides much of the same functionality, but differs in a few ways:
+MerkL is inspired by [DVC](http://dvc.org) and aims to provide much of the same functionality, but differs in a few ways:
 
-1. MerkL pipelines and functions are defined in pure Python and can be run from the command line as well as from a script.
-   Pipelines are thus suitable to be served from a web server without incurring the overhead of script start-up
-   time or loading of dependencies for each invocation.
-2. MerkL defines a _MerkLe DAG_ (Directed Asyclic Graph), also known as _block-chain_, consisting of the initial data,
-   code and output hashes. The output hash are are the combined hashes of the inputs, the code, and the output index.
-   All intermediate and final output hashes can therefore be calculated without having to execute any function body
-   code. MerkL can then easily check if these values exist in the cache without the need for external logs of pipeline results.
-3. Since pipelines are defined in code, one can create dynamic pipelines, e.g functions with
-   variable number of inputs and outputs. This is possible since all normal control structures (if, for, while) are
-   available when defining the pipeline in code.
-4. Outputs can be saved to file, but since data is passed in memory between chained function
-   calls (and cached by default), it is not mandatory to write the output to file.
-5. Breakpoints and debugging works as usual since the pipeline and nodes run in a single Python script.
+1. MerkL pipelines and functions are defined in pure Python and can be run from the command line as well as from a script or long-living server. Pipelines are thus suitable to be served from a web server without incurring the overhead of script start-up time or loading of dependencies for each invocation.
+2. MerkL defines a [Merkle DAG](https://en.wikipedia.org/wiki/Merkle_tree) (Directed Asyclic Graph), containing the hashes of of the initial data, code and outputs. The output hashes are are the combined hashes of the inputs, the code, and the output index. All intermediate and final output hashes can therefore be calculated without having to execute any function body code. MerkL can then easily check if these values exist in the cache without the need for external logs of pipeline results.
+3. Since pipelines are defined in code, one can create dynamic pipelines, e.g functions with variable number of inputs and outputs. This is possible since all normal control flow structures (if, for, while) are available when defining the pipeline in code.
+4. Outputs can be saved to file, but since data is passed in memory between chained function calls (and cached by default), this is not mandatory.
+5. Breakpoints and debugging works seamlessly since the pipeline and nodes run in a single Python script.
 
 Besides this core functionality, MerkL provides some simple commands for tracking files and pushing/pulling them from
 remote storage.
@@ -56,14 +49,12 @@ MerkL provides this command to move large files such as ML data sets or models t
 3. Move the file to `.merkl/cache` and symlink it back to the git repo
 4. Add `<file>` to `.gitignore`
 
-### `merkl run <module>.<function> [args] [--kwargs] [-0 <file>] [-1 <file>] ... [-N <file>]`
+### `merkl run [--dry] [--fill-missing] [--no-cache] <module>.<function> [args] [--kwargs] [-0 <file>] [-1 <file>] ... [-N <file>]`
 Run a pipeline or node function. Command line arguments are passed on as function arguments. The pipeline function is turned into a CLI using the [clize](https://clize.readthedocs.io/en/stable/#) library.
 Paths for the outputs to be written to can be supplied with the `-n <file>` option, where n takes the value of the output index.
-
-### `merkl dry-run [--pull] [--fill-missing] <module>.<function> [args] [--kwargs]`
-Like `merkl run` but doesn't calculate any values.
-If --pull is supplied, any cached values are pulled
-If --fill-missing is supplied, any missing function arguments are set to placeholder objects.
+--dry: only the hashes are calculated, not the actual output values
+--fill-missing: fill in any missing function arguments with placeholder values (for dry runs)
+--no-cache: do not fetch values from caches
 
 ### `merkl push [<file>]`
 Pushes tracked file to remote storage, e.g. Redis, S3, a relational database or a combination of destinations. If no
