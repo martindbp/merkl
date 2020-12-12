@@ -4,3 +4,9 @@ Read/write tracked files
 Visualize graph using graphviz
     Update graph for different events such as: function called, future evaluated, value retrieved from cache etc
     Show code and highlight line next to graph
+Allow nested calling of nodes, for e.g. an outer hyper-parameter optimization function, which calls a training/eval function in the inner body
+    Add execute_inner_graph option to decorator, which runs the function at graph-building time without substituting
+    MerklFutures. If a Future is accessed, we stop. Need to go through return values and substitute Futures with actual values
+    for this to work.
+Unindent code before hashing, to decrease duplication
+Build CLI for `merkl run <module>.<function>`

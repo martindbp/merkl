@@ -1,17 +1,16 @@
 import sys
 import json
 import hashlib
+import textwrap
 from enum import Enum
 from warnings import warn
-from inspect import signature, getsource, isfunction, ismodule
-from functools import wraps
+from functools import wraps, lru_cache
+from inspect import signature, getsource, isfunction, ismodule, getmodule
 from .serializers import PickleSerializer
 from .utils import doublewrap, OPERATORS, nested_map
 from .exceptions import *
 
-# Cache of code read from function files
-CODE_CACHE = {}
-
+getsource_cached = lru_cache()(getsource)
 
 class HashMode(Enum):
     MODULE = 1
@@ -115,21 +114,14 @@ def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
     for i in range(len(deps)):
         dep = deps[i]
         if isfunction(dep) or ismodule(dep):
-            deps[i] = getsource(dep)
+            deps[i] = textwrap.dedent(getsource_cached(dep))
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
         elif not isinstance(dep, str):
             raise NonSerializableFunctionDepException(f'Function dependency has to be either a function, module, string or bytes object')
 
-    f_filename = f.__code__.co_filename
-    if hash_mode == HashMode.MODULE:
-        code = CODE_CACHE.get(f_filename)
-        if code is None:
-            with open(f_filename, 'r') as code_file:
-                code = code_file.read()
-    else:
-        #TODO: remove identation
-        code = getsource(f)
+    code_obj = getmodule(f) if hash_mode == HashMode.MODULE else f
+    code = textwrap.dedent(getsource_cached(code_obj))
 
     @wraps(f)
     def wrap(*args, **kwargs):
