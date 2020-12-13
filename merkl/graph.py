@@ -8,7 +8,13 @@ from functools import wraps, lru_cache
 from inspect import signature, getsource, isfunction, ismodule, getmodule
 from merkl.serializers import PickleSerializer
 from merkl.utils import doublewrap, OPERATORS, nested_map
-from merkl.exceptions import *
+from merkl.exceptions import (
+    NonSerializableArgException,
+    NonPositiveOutsException,
+    NonMatchingSignaturesException,
+    BadOutsValueException,
+    FutureAccessException,
+)
 
 getsource_cached = lru_cache()(getsource)
 
@@ -27,8 +33,24 @@ def map_merkl_future_to_hash(val):
     if isinstance(val, MerkLFuture):
         return {'merkl_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
-        raise NonSerializableArgException(f'Input arg to function: {str(val)} is neither str, int or float')
+        raise NonSerializableArgException
     return val
+
+
+def validate_outs(outs, sig=None):
+    # Validate and outs, return True if outs was None
+    if isinstance(outs, int):
+        if outs <= 0:
+            raise NonPositiveOutsException('Number of outs has to be greater than zero')
+    elif callable(outs) and sig is not None:
+        outs_sig = signature(outs)
+        if outs_sig != sig:
+            raise NonMatchingSignaturesException
+    elif outs == None:
+        return True
+    else:
+        raise BadOutsValueException
+    return False
 
 
 class MerkLFuture:
@@ -86,7 +108,7 @@ class MerkLFuture:
         return output
 
     def deny_access(self, *args, **kwargs):
-        raise FutureAccessException()
+        raise FutureAccessException
 
 # Override all the operators of MerkLFuture to raise a specific exception when used
 for name in OPERATORS:
@@ -97,18 +119,7 @@ for name in OPERATORS:
 def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, out_cache_policy={}):
     sig = signature(f)
 
-    # Validate and outs
-    if isinstance(outs, int):
-        if outs <= 0:
-            raise NonPositiveOutsException('Number of outs has to be greater than zero')
-    elif callable(outs):
-        outs_sig = signature(outs)
-        if outs_sig != sig:
-            raise NonMatchingSignaturesException(f'`outs` signature {outs_sig} differs from function signature {sig}')
-    elif outs == None:
-        pass  # Nothing to do
-    else:
-        raise BadOutsValueException('`outs` has to be resolved to an integer or None')
+    validate_outs(outs, sig)
 
     # Validate and resolve deps
     for i in range(len(deps)):
@@ -118,7 +129,7 @@ def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
         elif not isinstance(dep, str):
-            raise NonSerializableFunctionDepException(f'Function dependency has to be either a function, module, string or bytes object')
+            raise NonSerializableFunctionDepException
 
     code_obj = getmodule(f) if hash_mode == HashMode.MODULE else f
     code = textwrap.dedent(getsource_cached(code_obj))
@@ -140,19 +151,10 @@ def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
         m.update(bytes(json.dumps(hash_data, sort_keys=True), 'utf-8'))
         code_args_hash = m.hexdigest()
 
-        resolved_outs = outs
-        outs_was_none = False
-        if callable(outs):
-            resolved_outs = outs(*args, **kwargs)
-
-        if isinstance(resolved_outs, int):
-            if resolved_outs <= 0:
-                raise NonPositiveOutsException('Number of outs has to be greater than zero')
-        elif resolved_outs == None:
+        resolved_outs = outs(*args, **kwargs) if callable(outs) else outs
+        outs_was_none = validate_outs(resolved_outs)
+        if outs_was_none:
             resolved_outs = 1
-            outs_was_none = True
-        else:
-            raise BadOutsValueException('`outs` has to be resolved to an integer or None')
 
         outputs = []
         outs_result_cache = {}
