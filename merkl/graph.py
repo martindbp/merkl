@@ -8,13 +8,7 @@ from functools import wraps, lru_cache
 from inspect import signature, getsource, isfunction, ismodule, getmodule
 from merkl.serializers import PickleSerializer
 from merkl.utils import doublewrap, OPERATORS, nested_map
-from merkl.exceptions import (
-    NonSerializableArgException,
-    NonPositiveOutsException,
-    NonMatchingSignaturesException,
-    BadOutsValueException,
-    FutureAccessException,
-)
+from merkl.exceptions import *
 
 getsource_cached = lru_cache()(getsource)
 
@@ -38,10 +32,9 @@ def map_merkl_future_to_hash(val):
 
 
 def validate_outs(outs, sig=None):
-    # Validate and outs, return True if outs was None
     if isinstance(outs, int):
         if outs <= 0:
-            raise NonPositiveOutsException('Number of outs has to be greater than zero')
+            raise NonPositiveOutsException
     elif callable(outs) and sig is not None:
         outs_sig = signature(outs)
         if outs_sig != sig:
@@ -57,6 +50,7 @@ class MerkLFuture:
     def __init__(
         self,
         fn,
+        num_outs,
         outs_was_none,
         code_args_hash,
         output_index,
@@ -68,6 +62,7 @@ class MerkLFuture:
         outs_result_cache,
     ):
         self.fn = fn
+        self.num_outs = num_outs
         self.outs_was_none = outs_was_none
         self.code_args_hash = code_args_hash
         self.output_index = output_index
@@ -94,16 +89,9 @@ class MerkLFuture:
             return output[self.output_index]
 
         if isinstance(output, tuple) and self.outs_was_none:
-            print(
-                (
-                    f'WARNING: Output of function `{self.fn.__name__}` is a tuple, but function only has one out by default. '
-                    f'To remove warning, set number of outs explicitly for function ({self.fn.__code__.co_filename}). Example:\n'
-                    '\t@node(outs=1)\n'
-                    f'\tdef {self.fn.__name__}(*args, **kwargs):\n'
-                    '\t\tpass'
-                ),
-                file=sys.stderr
-            )
+            raise ImplicitSingleOutMismatchException
+        elif isinstance(output, tuple) and len(output) != self.num_outs:
+            raise WrongNumberOfOutsException
 
         return output
 
@@ -168,6 +156,7 @@ def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
             cache_policy = out_cache_policy.get(i, None)
             output = MerkLFuture(
                 f,
+                resolved_outs,
                 outs_was_none,
                 code_args_hash,
                 i if resolved_outs > 1 else None,

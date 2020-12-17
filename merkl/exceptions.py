@@ -20,3 +20,11 @@ class NonPositiveOutsException(BaseException):
 
 class BadOutsValueException(BaseException):
     pass
+
+
+class WrongNumberOfOutsException(BaseException):
+    pass
+
+
+class ImplicitSingleOutMismatchException(BaseException):
+    pass

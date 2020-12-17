@@ -2,9 +2,9 @@ import sys
 import unittest
 from io import StringIO
 
-from nodes.embed_bert import embed_bert, embed_bert_large
-from nodes.embed_elmo import embed_elmo
-from nodes.cluster import cluster
+from merkl.tests.nodes.embed_bert import embed_bert, embed_bert_large
+from merkl.tests.nodes.embed_elmo import embed_elmo
+from merkl.tests.nodes.cluster import cluster
 from merkl.graph import MerkLFuture, node, HashMode
 from merkl.exceptions import *
 
@@ -69,13 +69,9 @@ class TestMerkL(unittest.TestCase):
         # Single output by default
         self.assertTrue(isinstance(out, MerkLFuture))
 
-        # Make sure we print a warning when we try to access the value
-        # (since we didn't specify number of outs explicitly, and output is a tuple)
-        outs, err_output = get_stderr(lambda: out.get())
-        self.assertTrue('WARNING' in err_output)
-
-        self.assertEqual(len(outs), 2)
-        self.assertEqual(outs[0], 'test')
+        # Make sure we get an excepion since we didn't specify number of outs explicitly, and output is a tuple
+        with self.assertRaises(ImplicitSingleOutMismatchException):
+            out.get()
 
         # Now set outs to 2, so we get two separate futures
         @node(outs=2)
@@ -99,6 +95,14 @@ class TestMerkL(unittest.TestCase):
             @node(outs=lambda inpoot_value, k: k)
             def _node4(input_value, k):
                 return input_value, 3
+
+        # Check that we get error if we return wrong number of outs
+        @node(outs=1)
+        def _node5(input_value):
+            return input_value, 3
+
+        with self.assertRaises(WrongNumberOfOutsException):
+            _node5('test').get()
 
     def test_pipelines(self):
         @node(outs=lambda input_values: len(input_values))
@@ -128,8 +132,8 @@ class TestMerkL(unittest.TestCase):
 
         # Test that two identical functions in two different files (with slightly different content)
         # are the same if HashMode.FUNCTION is used
-        from nodes.identical_node1 import identical_node as identical_node1
-        from nodes.identical_node2 import identical_node as identical_node2
+        from merkl.tests.nodes.identical_node1 import identical_node as identical_node1
+        from merkl.tests.nodes.identical_node2 import identical_node as identical_node2
         self.assertEqual(identical_node1('test').hash, identical_node2('test').hash)
 
         def fn_dep1(arg1, arg2):
@@ -138,7 +142,7 @@ class TestMerkL(unittest.TestCase):
         def fn_dep2(arg1, arg2):
             return arg1 + arg2
 
-        from nodes import embed_bert as embed_bert_module
+        from merkl.tests.nodes import embed_bert as embed_bert_module
         _node1_module_dep = node(deps=[embed_bert_module])(_node1)
         _node1_function_dep1 = node(deps=[fn_dep1])(_node1)
         _node1_function_dep2 = node(deps=[fn_dep2])(_node1)
