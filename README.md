@@ -24,7 +24,7 @@ MerkL tries to solve these issues by:
 
 ## Technical details
 
-MerkL is inspired by [DVC](http://dvc.org) and aims to provide much of the same functionality, but differs in a few ways:
+MerkL is inspired by [DVC](http://dvc.org) and aims to provide a subset of the same functionality, but differs in a few ways in implementation:
 
 1. MerkL pipelines and functions are defined in pure Python and can be run from the command line as well as from a script or long-living server. Pipelines are thus suitable to be served from a web server without incurring the overhead of script start-up time or loading of dependencies for each invocation.
 2. MerkL defines a [Merkle DAG](https://en.wikipedia.org/wiki/Merkle_tree) (Directed Asyclic Graph), containing the hashes of of the initial data, code and outputs. The output hashes are are the combined hashes of the inputs, the code, and the output index. All intermediate and final output hashes can therefore be calculated without having to execute any function body code. MerkL can then easily check if these values exist in the cache without the need for external logs of pipeline results.
@@ -37,30 +37,30 @@ remote storage.
 
 ## Commands
 
-### `merkl init`
+`merkl init`
 Creates a MerkL repository in the current directory. This creates the hidden `.merkl` folder which contains the local
 cache and the `config` file. The `.merkl` directory is also added to the .gitignore if the file exists.
 
-### `merkl track <file>`
+`merkl track <file>`
 MerkL provides this command to move large files such as ML data sets or models to a cache folder outside of git, and track the file using its content hash instead. The steps that the command executes are:
 
 1. Hash the file
 2. Create a new file `<file>.merkl` containing the file hash and timestamp
 3. Move the file to `.merkl/cache` and symlink it back to the git repo
-4. Add `<file>` to `.gitignore`
+4. Add `<file>` to `.gitignore` if there is one
 
-### `merkl run [--dry] [--fill-missing] [--no-cache] <module>.<function> [args] [--kwargs] [-0 <file>] [-1 <file>] ... [-N <file>]`
+`merkl run [--dry] [--fill-missing] [--no-cache] <module>.<function> [args] [--kwargs] [-0 <file>] [-1 <file>] ... [-N <file>]`
 Run a pipeline or node function. Command line arguments are passed on as function arguments. The pipeline function is turned into a CLI using the [clize](https://clize.readthedocs.io/en/stable/#) library.
 Paths for the outputs to be written to can be supplied with the `-n <file>` option, where n takes the value of the output index.
 --dry: only the hashes are calculated, not the actual output values
 --fill-missing: fill in any missing function arguments with placeholder values (for dry runs)
 --no-cache: do not fetch values from caches
 
-### `merkl push [<file>]`
+`merkl push [<file>]`
 Pushes tracked file to remote storage, e.g. Redis, S3, a relational database or a combination of destinations. If no
 files are specified, then all tracked files in the project are pushed.
 
-### `merkl pull [<file>]`
+`merkl pull [<file>]`
 Pulls tracked file from remote to local storage. If no files are specified, then all tracked files in the project are pushed.
 
 ## Nodes

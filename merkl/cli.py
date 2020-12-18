@@ -29,9 +29,13 @@ def main():
     run_parser = subparsers.add_parser(
         'run', description='Run a node or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
-    run_parser.add_argument(
-        '-f', '--files', action='store_true', help='Shows a list of changed files only')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
+
+    # ------------- TRACK ------------
+    track_parser = subparsers.add_parser(
+        'track', description='Track a file')
+    track_parser.set_defaults(command='track', subcommand='track')
+    track_parser.add_argument('files', nargs='*', help='Files to track')
 
     args, unknown_args = parser.parse_known_args()
     kwargs = dict(args._get_kwargs())

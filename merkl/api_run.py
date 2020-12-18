@@ -14,7 +14,7 @@ def evaluate_futures(f):
 
 
 class RunAPI:
-    def run(self, module_function, **kwargs):
+    def run(self, module_function):
         module_name, function_name = module_function.rsplit('.', 1)
 
         module = import_module(module_name)
