@@ -1,4 +1,7 @@
 import hashlib
+import ast
+import inspect
+import textwrap
 from functools import wraps
 
 
@@ -101,3 +104,38 @@ def get_hash_memory_optimized(f_path, mode='md5'):
             block = file.read(512)
 
     return h.hexdigest()
+
+
+def get_return_nodes(node, collect):
+    if isinstance(node, ast.FunctionDef):
+        # Don't collect return nodes in nested functions
+        return
+    elif isinstance(node, ast.Return):
+        collect.append(node)
+    elif hasattr(node, 'iter_child_nodes'):
+        for child_node in node.iter_child_nodes():
+            get_return_nodes(child_node, collect)
+    elif hasattr(node, 'body'):
+        for child_node in node.body:
+            get_return_nodes(child_node, collect)
+
+
+def get_function_return_type_length(f):
+    dedented_source = textwrap.dedent(inspect.getsource(f))
+    function_ast = ast.parse(dedented_source).body[0]
+    return_nodes = []
+    for node in ast.iter_child_nodes(function_ast):
+        get_return_nodes(node, return_nodes)
+
+    return_types, num_returns = [], []
+    for node in return_nodes:
+        type_name = type(node.value).__name__
+        if type_name == 'Tuple':
+            num_returns.append(len(node.value.elts))
+        else:
+            # It it's not tuple, we treat it as a single value
+            num_returns.append(1)
+
+        return_types.append(type_name)
+
+    return set(return_types), set(num_returns)

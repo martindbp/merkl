@@ -7,7 +7,7 @@ from warnings import warn
 from functools import wraps, lru_cache
 from inspect import signature, getsource, isfunction, ismodule, getmodule
 from merkl.serializers import PickleSerializer
-from merkl.utils import doublewrap, OPERATORS, nested_map
+from merkl.utils import doublewrap, OPERATORS, nested_map, get_function_return_type_length
 from merkl.exceptions import *
 
 getsource_cached = lru_cache()(getsource)
@@ -39,11 +39,8 @@ def validate_outs(outs, sig=None):
         outs_sig = signature(outs)
         if outs_sig != sig:
             raise NonMatchingSignaturesError
-    elif outs == None:
-        return True
     else:
         raise BadOutsValueError
-    return False
 
 
 class MerkLFuture:
@@ -52,7 +49,6 @@ class MerkLFuture:
         fn,
         output_hash,
         num_outs=1,
-        outs_was_none=False,
         code_args_hash=None,
         output_index=None,
         serializer=None,
@@ -63,7 +59,6 @@ class MerkLFuture:
         self.fn = fn
         self.hash = output_hash
         self.num_outs = num_outs
-        self.outs_was_none = outs_was_none
         self.code_args_hash = code_args_hash
         self.output_index = output_index
         self.serializer = serializer
@@ -86,15 +81,14 @@ class MerkLFuture:
         if self.output_index is not None:
             return output[self.output_index]
 
-        if isinstance(output, tuple) and self.outs_was_none:
-            raise ImplicitSingleOutMismatchError
-        elif isinstance(output, tuple) and len(output) != self.num_outs:
+        if isinstance(output, tuple) and len(output) != self.num_outs:
             raise WrongNumberOfOutsError
 
         return output
 
     def deny_access(self, *args, **kwargs):
         raise FutureAccessError
+
 
 # Override all the operators of MerkLFuture to raise a specific exception when used
 for name in OPERATORS:
@@ -105,7 +99,17 @@ for name in OPERATORS:
 def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, out_cache_policy={}):
     sig = signature(f)
 
-    validate_outs(outs, sig)
+    if outs is not None:
+        validate_outs(outs, sig)
+    else:
+        # Get num outs from AST if possible
+        return_types, num_returns = get_function_return_type_length(f)
+        if len(return_types) != 1 and 'Tuple' in return_types:
+            raise ReturnTypeMismatchError
+        elif len(num_returns) != 1:
+            raise NumReturnValuesMismatchError
+
+        outs = num_returns.pop()
 
     # Validate and resolve deps
     for i in range(len(deps)):
@@ -138,9 +142,7 @@ def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
         code_args_hash = m.hexdigest()
 
         resolved_outs = outs(*args, **kwargs) if callable(outs) else outs
-        outs_was_none = validate_outs(resolved_outs)
-        if outs_was_none:
-            resolved_outs = 1
+        validate_outs(resolved_outs)
 
         outputs = []
         outs_result_cache = {}
@@ -156,7 +158,6 @@ def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
                 f,
                 output_hash,
                 resolved_outs,
-                outs_was_none,
                 code_args_hash,
                 i if resolved_outs > 1 else None,
                 serializer,

@@ -24,7 +24,6 @@ def get_stderr(f):
 
 
 class TestMerkL(unittest.TestCase):
-
     def test_task_hashing(self):
         # Test that hash is the same every time
         self.assertEqual(embed_bert('sentence').hash, embed_bert('sentence').hash)
@@ -65,13 +64,33 @@ class TestMerkL(unittest.TestCase):
         def _task1(input_value):
             return input_value, 3
 
-        out = _task1('test')
+        outs = _task1('test')
         # Single output by default
-        self.assertTrue(isinstance(out, MerkLFuture))
+        self.assertEqual(len(outs), 2)
+        for out in outs:
+            self.assertTrue(isinstance(out, MerkLFuture))
 
-        # Make sure we get an excepion since we didn't specify number of outs explicitly, and output is a tuple
-        with self.assertRaises(ImplicitSingleOutMismatchError):
-            out.get()
+        with self.assertRaises(NumReturnValuesMismatchError):
+            @task
+            def _task1(input_value):
+                if input_value > 4:
+                    return input_value, 2, 3
+                return input_value, 3
+
+        # Mismatching return in nested should be ok (should not raise exception)
+        @task
+        def _task1(input_value):
+            def _nested_function():
+                return input_value, 2, 3
+            return input_value, 3
+
+        # Single return value of other type than tuple should just produce a single MerkLFuture
+        @task
+        def _task1(input_value):
+            return {'key1': 1, 'key2': input_value*2}
+
+        out = _task1('test')
+        self.assertTrue(isinstance(out, MerkLFuture))
 
         # Now set outs to 2, so we get two separate futures
         @task(outs=2)
@@ -128,7 +147,8 @@ class TestMerkL(unittest.TestCase):
 
         _task1_file = task(hash_mode=HashMode.MODULE)(_task1)
         _task1_function = task(hash_mode=HashMode.FUNCTION)(_task1)
-        self.assertNotEqual(_task1_file('test').hash, _task1_function('test').hash)
+        for out1, out2 in zip(_task1_file('test'), _task1_function('test')):
+            self.assertNotEqual(out1.hash, out2.hash)
 
         # Test that two identical functions in two different files (with slightly different content)
         # are the same if HashMode.FUNCTION is used
@@ -149,11 +169,11 @@ class TestMerkL(unittest.TestCase):
         _task1_string_dep = task(deps=['val1'])(_task1)
         _task1_bytes_dep = task(deps=[b'val1'])(_task1)
         hashes = [
-            _task1_module_dep('test').hash,
-            _task1_function_dep1('test').hash,
-            _task1_function_dep2('test').hash,
-            _task1_string_dep('test').hash,
-            _task1_bytes_dep('test').hash,
+            _task1_module_dep('test')[0].hash,
+            _task1_function_dep1('test')[0].hash,
+            _task1_function_dep2('test')[0].hash,
+            _task1_string_dep('test')[0].hash,
+            _task1_bytes_dep('test')[0].hash,
         ]
         # Check that all hashes are unique, except the last two which are equal
         self.assertEqual(len(set(hashes[:3])), 3)

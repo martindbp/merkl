@@ -26,9 +26,13 @@ class WrongNumberOfOutsError(BaseException):
     pass
 
 
-class ImplicitSingleOutMismatchError(BaseException):
+class FileNotTrackedError(BaseException):
     pass
 
 
-class FileNotTrackedError(BaseException):
+class ReturnTypeMismatchError(BaseException):
+    pass
+
+
+class NumReturnValuesMismatchError(BaseException):
     pass
