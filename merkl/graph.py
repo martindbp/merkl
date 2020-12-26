@@ -27,22 +27,22 @@ def map_merkl_future_to_hash(val):
     if isinstance(val, MerkLFuture):
         return {'merkl_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
-        raise NonSerializableArgException
+        raise NonSerializableArgError
     return val
 
 
 def validate_outs(outs, sig=None):
     if isinstance(outs, int):
         if outs <= 0:
-            raise NonPositiveOutsException
+            raise NonPositiveOutsError
     elif callable(outs) and sig is not None:
         outs_sig = signature(outs)
         if outs_sig != sig:
-            raise NonMatchingSignaturesException
+            raise NonMatchingSignaturesError
     elif outs == None:
         return True
     else:
-        raise BadOutsValueException
+        raise BadOutsValueError
     return False
 
 
@@ -50,34 +50,32 @@ class MerkLFuture:
     def __init__(
         self,
         fn,
-        num_outs,
-        outs_was_none,
-        code_args_hash,
-        output_index,
         output_hash,
-        serializer,
-        cache_policy,
-        sig,
-        bound_args,
-        outs_result_cache,
+        num_outs=1,
+        outs_was_none=False,
+        code_args_hash=None,
+        output_index=None,
+        serializer=None,
+        cache_policy=None,
+        bound_args=None,
+        outs_result_cache=None,
     ):
         self.fn = fn
+        self.hash = output_hash
         self.num_outs = num_outs
         self.outs_was_none = outs_was_none
         self.code_args_hash = code_args_hash
         self.output_index = output_index
-        self.hash = output_hash
         self.serializer = serializer
         self.cache_policy = cache_policy
-        self.sig = sig
         self.bound_args = bound_args
 
         # Cache for the all outputs with the respect to a function and its args
-        self.outs_result_cache = outs_result_cache
+        self.outs_result_cache = outs_result_cache or {}
 
     def get(self):
-        evaluated_args = nested_map(self.bound_args.args, map_merkl_future_to_value)
-        evaluated_kwargs = nested_map(self.bound_args.kwargs, map_merkl_future_to_value)
+        evaluated_args = nested_map(self.bound_args.args, map_merkl_future_to_value) if self.bound_args else []
+        evaluated_kwargs = nested_map(self.bound_args.kwargs, map_merkl_future_to_value) if self.bound_args else {}
 
         if self.code_args_hash in self.outs_result_cache:
             output = self.outs_result_cache.get(self.code_args_hash)
@@ -89,14 +87,14 @@ class MerkLFuture:
             return output[self.output_index]
 
         if isinstance(output, tuple) and self.outs_was_none:
-            raise ImplicitSingleOutMismatchException
+            raise ImplicitSingleOutMismatchError
         elif isinstance(output, tuple) and len(output) != self.num_outs:
-            raise WrongNumberOfOutsException
+            raise WrongNumberOfOutsError
 
         return output
 
     def deny_access(self, *args, **kwargs):
-        raise FutureAccessException
+        raise FutureAccessError
 
 # Override all the operators of MerkLFuture to raise a specific exception when used
 for name in OPERATORS:
@@ -117,7 +115,7 @@ def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
         elif not isinstance(dep, str):
-            raise NonSerializableFunctionDepException
+            raise NonSerializableFunctionDepError
 
     code_obj = getmodule(f) if hash_mode == HashMode.MODULE else f
     code = textwrap.dedent(getsource_cached(code_obj))
@@ -156,14 +154,13 @@ def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
             cache_policy = out_cache_policy.get(i, None)
             output = MerkLFuture(
                 f,
+                output_hash,
                 resolved_outs,
                 outs_was_none,
                 code_args_hash,
                 i if resolved_outs > 1 else None,
-                output_hash,
                 serializer,
                 cache_policy,
-                sig,
                 bound_args,
                 outs_result_cache,
             )

@@ -11,7 +11,7 @@ Allow nested calling of nodes, for e.g. an outer hyper-parameter optimization fu
     MerkLFutures. If a Future is accessed, we stop. Need to go through return values and substitute Futures with actual values
     for this to work.
 Build CLI for `merkl run <module>.<function>`
-    If function is node, first convert Futures to values
+    Add --dry option
 Add type hints / mypy
 Make sure functions are executed in the same order as the code
 Provide a `merkl.collect(*futures)` function that returns a list of independent nodes or branches that can be executed
@@ -20,6 +20,7 @@ Have a cache backend that dedupes using content hash. Store links: merkle hash -
     Two types of backends: just merkle hashes, or merkle + content hashes
     When passing along fileobjects, to a streaming hash of the content while writing to file. Can stream bytes into hashlib
 Rename node -> task
+Rename graph.py -> pipelines.py
 Allow outs to be a dict -> each value becomes its own out
 Determine number of outs using AST
     All return statements need to have same signature

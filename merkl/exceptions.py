@@ -1,30 +1,34 @@
-class FutureAccessException(BaseException):
+class FutureAccessError(BaseException):
     pass
 
 
-class NonSerializableArgException(BaseException):
+class NonSerializableArgError(BaseException):
     pass
 
 
-class NonSerializableFunctionDepException(BaseException):
+class NonSerializableFunctionDepError(BaseException):
     pass
 
 
-class NonMatchingSignaturesException(BaseException):
+class NonMatchingSignaturesError(BaseException):
     pass
 
 
-class NonPositiveOutsException(BaseException):
+class NonPositiveOutsError(BaseException):
     pass
 
 
-class BadOutsValueException(BaseException):
+class BadOutsValueError(BaseException):
     pass
 
 
-class WrongNumberOfOutsException(BaseException):
+class WrongNumberOfOutsError(BaseException):
     pass
 
 
-class ImplicitSingleOutMismatchException(BaseException):
+class ImplicitSingleOutMismatchError(BaseException):
+    pass
+
+
+class FileNotTrackedError(BaseException):
     pass

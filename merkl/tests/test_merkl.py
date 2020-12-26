@@ -42,21 +42,21 @@ class TestMerkL(unittest.TestCase):
         class MyClass:
             pass
 
-        with self.assertRaises(NonSerializableArgException):
+        with self.assertRaises(NonSerializableArgError):
             embed_bert(MyClass())
 
     def test_outs(self):
-        with self.assertRaises(NonPositiveOutsException):
+        with self.assertRaises(NonPositiveOutsError):
             @node(outs=0)
             def _node_zero_outs(input_value):
                 return input_value, 3
 
-        with self.assertRaises(NonPositiveOutsException):
+        with self.assertRaises(NonPositiveOutsError):
             @node(outs=-1)
             def _node_negative_outs(input_value):
                 return input_value, 3
 
-        with self.assertRaises(BadOutsValueException):
+        with self.assertRaises(BadOutsValueError):
             @node(outs=1.0)
             def _node_float_outs(input_value):
                 return input_value, 3
@@ -70,7 +70,7 @@ class TestMerkL(unittest.TestCase):
         self.assertTrue(isinstance(out, MerkLFuture))
 
         # Make sure we get an excepion since we didn't specify number of outs explicitly, and output is a tuple
-        with self.assertRaises(ImplicitSingleOutMismatchException):
+        with self.assertRaises(ImplicitSingleOutMismatchError):
             out.get()
 
         # Now set outs to 2, so we get two separate futures
@@ -91,7 +91,7 @@ class TestMerkL(unittest.TestCase):
         self.assertEqual(len(outs), 4)
 
         # Test that the wrong function signature fails
-        with self.assertRaises(NonMatchingSignaturesException):
+        with self.assertRaises(NonMatchingSignaturesError):
             @node(outs=lambda inpoot_value, k: k)
             def _node4(input_value, k):
                 return input_value, 3
@@ -101,7 +101,7 @@ class TestMerkL(unittest.TestCase):
         def _node5(input_value):
             return input_value, 3
 
-        with self.assertRaises(WrongNumberOfOutsException):
+        with self.assertRaises(WrongNumberOfOutsError):
             _node5('test').get()
 
     def test_pipelines(self):
@@ -162,25 +162,25 @@ class TestMerkL(unittest.TestCase):
     def test_future_operator_access(self):
         # Test that MerkLFuture cannot be accessed by checking some operators
         future = embed_bert('sentence')
-        with self.assertRaises(FutureAccessException):
+        with self.assertRaises(FutureAccessError):
             # Can't be added to set
             set([future])
 
-        with self.assertRaises(FutureAccessException):
+        with self.assertRaises(FutureAccessError):
             # Can't be used as a truth value in statements
             if future:
                 print('hello world')
 
-        with self.assertRaises(FutureAccessException):
+        with self.assertRaises(FutureAccessError):
             # Can't be iterated over
             for x in future:
                 print('hello world')
 
-        with self.assertRaises(FutureAccessException):
+        with self.assertRaises(FutureAccessError):
             # Can't get a length from it
             print(len(future))
 
-        with self.assertRaises(FutureAccessException):
+        with self.assertRaises(FutureAccessError):
             future += 1
 
 
