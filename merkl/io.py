@@ -3,7 +3,7 @@ import pathlib
 import json
 from datetime import datetime
 from merkl.exceptions import FileNotTrackedError
-from merkl.graph import MerkLFuture
+from merkl.pipeline import MerkLFuture
 from merkl.utils import get_hash_memory_optimized
 
 

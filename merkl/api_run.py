@@ -2,7 +2,7 @@ import functools
 from importlib import import_module
 import clize
 
-from merkl.graph import map_merkl_future_to_value
+from merkl.pipeline import map_merkl_future_to_value
 from merkl.utils import nested_map
 
 
