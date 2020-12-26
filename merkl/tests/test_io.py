@@ -1,6 +1,7 @@
 import os
 import unittest
-from merkl.io import get_file_future, track_file
+from merkl.io import get_file_future, get_fileobject_future, track_file
+from merkl.exceptions import FileNotTrackedError
 
 
 class TestIO(unittest.TestCase):
@@ -38,9 +39,18 @@ class TestIO(unittest.TestCase):
         _assert_gitignore()
 
     def test_file_future(self):
+        with self.assertRaises(FileNotTrackedError):
+            get_file_future('non_existant_file.txt', 'r')
+
         track_file(self.tmp_file, self.gitignore_file)
         ff = get_file_future(self.tmp_file, 'r')
-        self.assertEqual(ff.get(), b'hello world')
+        self.assertEqual(ff.get(), 'hello world')
+
+    def test_fileobject_future(self):
+        track_file(self.tmp_file, self.gitignore_file)
+        fof = get_fileobject_future(self.tmp_file, 'r')
+        with fof.get() as f:
+            self.assertEqual(f.read(), 'hello world')
 
 
 if __name__ == '__main__':
