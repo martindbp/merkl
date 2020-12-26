@@ -1,5 +1,5 @@
-from merkl.tests.nodes.embed_bert import embed_bert
-from merkl.tests.nodes.cluster import cluster
+from merkl.tests.tasks.embed_bert import embed_bert
+from merkl.tests.tasks.cluster import cluster
 
 
 def clustering_pipeline():

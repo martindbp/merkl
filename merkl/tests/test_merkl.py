@@ -2,10 +2,10 @@ import sys
 import unittest
 from io import StringIO
 
-from merkl.tests.nodes.embed_bert import embed_bert, embed_bert_large
-from merkl.tests.nodes.embed_elmo import embed_elmo
-from merkl.tests.nodes.cluster import cluster
-from merkl.graph import MerkLFuture, node, HashMode
+from merkl.tests.tasks.embed_bert import embed_bert, embed_bert_large
+from merkl.tests.tasks.embed_elmo import embed_elmo
+from merkl.tests.tasks.cluster import cluster
+from merkl.graph import MerkLFuture, task, HashMode
 from merkl.exceptions import *
 
 
@@ -25,7 +25,7 @@ def get_stderr(f):
 
 class TestMerkL(unittest.TestCase):
 
-    def test_node_hashing(self):
+    def test_task_hashing(self):
         # Test that hash is the same every time
         self.assertEqual(embed_bert('sentence').hash, embed_bert('sentence').hash)
 
@@ -38,7 +38,7 @@ class TestMerkL(unittest.TestCase):
         # Test that hash is different with different function in same file
         self.assertNotEqual(embed_bert('sentence').hash, embed_bert_large('sentence').hash)
 
-        # Test that we raise the right exception when trying to pass something non-serializable to a node
+        # Test that we raise the right exception when trying to pass something non-serializable to a task
         class MyClass:
             pass
 
@@ -47,25 +47,25 @@ class TestMerkL(unittest.TestCase):
 
     def test_outs(self):
         with self.assertRaises(NonPositiveOutsError):
-            @node(outs=0)
-            def _node_zero_outs(input_value):
+            @task(outs=0)
+            def _task_zero_outs(input_value):
                 return input_value, 3
 
         with self.assertRaises(NonPositiveOutsError):
-            @node(outs=-1)
-            def _node_negative_outs(input_value):
+            @task(outs=-1)
+            def _task_negative_outs(input_value):
                 return input_value, 3
 
         with self.assertRaises(BadOutsValueError):
-            @node(outs=1.0)
-            def _node_float_outs(input_value):
+            @task(outs=1.0)
+            def _task_float_outs(input_value):
                 return input_value, 3
 
-        @node
-        def _node1(input_value):
+        @task
+        def _task1(input_value):
             return input_value, 3
 
-        out = _node1('test')
+        out = _task1('test')
         # Single output by default
         self.assertTrue(isinstance(out, MerkLFuture))
 
@@ -74,67 +74,67 @@ class TestMerkL(unittest.TestCase):
             out.get()
 
         # Now set outs to 2, so we get two separate futures
-        @node(outs=2)
-        def _node2(input_value):
+        @task(outs=2)
+        def _task2(input_value):
             return input_value, 3
 
-        outs = _node2('test')
+        outs = _task2('test')
         self.assertEqual(len(outs), 2)
         self.assertNotEqual(outs[0].hash, outs[1].hash)
 
         # Test `outs` as a function
-        @node(outs=lambda input_value, k: k)
-        def _node3(input_value, k):
+        @task(outs=lambda input_value, k: k)
+        def _task3(input_value, k):
             return input_value, 3
 
-        outs = _node3('test', 4)
+        outs = _task3('test', 4)
         self.assertEqual(len(outs), 4)
 
         # Test that the wrong function signature fails
         with self.assertRaises(NonMatchingSignaturesError):
-            @node(outs=lambda inpoot_value, k: k)
-            def _node4(input_value, k):
+            @task(outs=lambda inpoot_value, k: k)
+            def _task4(input_value, k):
                 return input_value, 3
 
         # Check that we get error if we return wrong number of outs
-        @node(outs=1)
-        def _node5(input_value):
+        @task(outs=1)
+        def _task5(input_value):
             return input_value, 3
 
         with self.assertRaises(WrongNumberOfOutsError):
-            _node5('test').get()
+            _task5('test').get()
 
     def test_pipelines(self):
-        @node(outs=lambda input_values: len(input_values))
-        def _node1(input_values):
+        @task(outs=lambda input_values: len(input_values))
+        def _task1(input_values):
             return [val**2 for val in input_values]
 
         import math
-        @node
-        def _node2(input_value):
+        @task
+        def _task2(input_value):
             return math.sqrt(input_value)
 
         vals = [1, 1, 1, 4, 5, 6]
-        outs_stage1 = _node1(vals)
-        outs_stage2 = [_node2(val) for val in outs_stage1]
+        outs_stage1 = _task1(vals)
+        outs_stage2 = [_task2(val) for val in outs_stage1]
         self.assertEqual([out.get() for out in outs_stage2], vals)
 
         # Test that all hashes are different
         self.assertEqual(len(set(out.hash for out in outs_stage2)), len(vals))
 
     def test_hash_modes(self):
-        def _node1(input_value):
+        def _task1(input_value):
             return input_value, 3
 
-        _node1_file = node(hash_mode=HashMode.MODULE)(_node1)
-        _node1_function = node(hash_mode=HashMode.FUNCTION)(_node1)
-        self.assertNotEqual(_node1_file('test').hash, _node1_function('test').hash)
+        _task1_file = task(hash_mode=HashMode.MODULE)(_task1)
+        _task1_function = task(hash_mode=HashMode.FUNCTION)(_task1)
+        self.assertNotEqual(_task1_file('test').hash, _task1_function('test').hash)
 
         # Test that two identical functions in two different files (with slightly different content)
         # are the same if HashMode.FUNCTION is used
-        from merkl.tests.nodes.identical_node1 import identical_node as identical_node1
-        from merkl.tests.nodes.identical_node2 import identical_node as identical_node2
-        self.assertEqual(identical_node1('test').hash, identical_node2('test').hash)
+        from merkl.tests.tasks.identical_task1 import identical_task as identical_task1
+        from merkl.tests.tasks.identical_task2 import identical_task as identical_task2
+        self.assertEqual(identical_task1('test').hash, identical_task2('test').hash)
 
         def fn_dep1(arg1, arg2):
             return arg1 + arg2
@@ -142,18 +142,18 @@ class TestMerkL(unittest.TestCase):
         def fn_dep2(arg1, arg2):
             return arg1 + arg2
 
-        from merkl.tests.nodes import embed_bert as embed_bert_module
-        _node1_module_dep = node(deps=[embed_bert_module])(_node1)
-        _node1_function_dep1 = node(deps=[fn_dep1])(_node1)
-        _node1_function_dep2 = node(deps=[fn_dep2])(_node1)
-        _node1_string_dep = node(deps=['val1'])(_node1)
-        _node1_bytes_dep = node(deps=[b'val1'])(_node1)
+        from merkl.tests.tasks import embed_bert as embed_bert_module
+        _task1_module_dep = task(deps=[embed_bert_module])(_task1)
+        _task1_function_dep1 = task(deps=[fn_dep1])(_task1)
+        _task1_function_dep2 = task(deps=[fn_dep2])(_task1)
+        _task1_string_dep = task(deps=['val1'])(_task1)
+        _task1_bytes_dep = task(deps=[b'val1'])(_task1)
         hashes = [
-            _node1_module_dep('test').hash,
-            _node1_function_dep1('test').hash,
-            _node1_function_dep2('test').hash,
-            _node1_string_dep('test').hash,
-            _node1_bytes_dep('test').hash,
+            _task1_module_dep('test').hash,
+            _task1_function_dep1('test').hash,
+            _task1_function_dep2('test').hash,
+            _task1_string_dep('test').hash,
+            _task1_bytes_dep('test').hash,
         ]
         # Check that all hashes are unique, except the last two which are equal
         self.assertEqual(len(set(hashes[:3])), 3)

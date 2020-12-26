@@ -102,7 +102,7 @@ for name in OPERATORS:
 
 
 @doublewrap
-def node(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, out_cache_policy={}):
+def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, out_cache_policy={}):
     sig = signature(f)
 
     validate_outs(outs, sig)

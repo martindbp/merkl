@@ -27,7 +27,7 @@ def main():
 
     # ------------- RUN --------------
     run_parser = subparsers.add_parser(
-        'run', description='Run a node or pipeline function')
+        'run', description='Run a task or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
 

@@ -1,8 +1,8 @@
-from merkl import node
+from merkl import task
 import numpy as np
 
 
-@node(outs=2)
+@task(outs=2)
 def cluster(asd, *embedded_sentences, k=3):
     indices = list(range(len(embedded_sentences)))
     mid = len(indices)//2

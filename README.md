@@ -30,7 +30,7 @@ MerkL is inspired by [DVC](http://dvc.org) and aims to provide a subset of the s
 2. MerkL defines a [Merkle DAG](https://en.wikipedia.org/wiki/Merkle_tree) (Directed Asyclic Graph), containing the hashes of of the initial data, code and outputs. The output hashes are are the combined hashes of the inputs, the code, and the output index. All intermediate and final output hashes can therefore be calculated without having to execute any function body code. MerkL can then easily check if these values exist in the cache without the need for external logs of pipeline results.
 3. Since pipelines are defined in code, one can create dynamic pipelines, e.g functions with variable number of inputs and outputs. This is possible since all normal control flow structures (if, for, while) are available when defining the pipeline in code.
 4. Outputs can be saved to file, but since data is passed in memory between chained function calls (and cached by default), this is not mandatory.
-5. Breakpoints and debugging works seamlessly since the pipeline and nodes run in a single Python script.
+5. Breakpoints and debugging works seamlessly since the pipeline and tasks run in a single Python script.
 
 Besides this core functionality, MerkL provides some simple commands for tracking files and pushing/pulling them from
 remote storage.
@@ -50,7 +50,7 @@ MerkL provides this command to move large files such as ML data sets or models t
 4. Add `<file>` to `.gitignore` if there is one
 
 `merkl run [--dry] [--fill-missing] [--no-cache] <module>.<function> [args] [--kwargs] [-0 <file>] [-1 <file>] ... [-N <file>]`
-Run a pipeline or node function. Command line arguments are passed on as function arguments. The pipeline function is turned into a CLI using the [clize](https://clize.readthedocs.io/en/stable/#) library.
+Run a pipeline or task function. Command line arguments are passed on as function arguments. The pipeline function is turned into a CLI using the [clize](https://clize.readthedocs.io/en/stable/#) library.
 Paths for the outputs to be written to can be supplied with the `-n <file>` option, where n takes the value of the output index.
 --dry: only the hashes are calculated, not the actual output values
 --fill-missing: fill in any missing function arguments with placeholder values (for dry runs)
@@ -65,12 +65,12 @@ Pulls tracked file from remote to local storage. If no files are specified, then
 
 ## Nodes
 
-A Python function can be turned into a pipline node by the use of the `merkl.node` decorator:
+A Python function can be turned into a pipline task by the use of the `merkl.task` decorator:
 
 ```
-from merkl import node
+from merkl import task
 
-@node
+@task
 def my_function(input_value):
     return 2 * input_value
 ```
@@ -82,19 +82,19 @@ Node functions have these restrictions:
 2. The number of outputs need to be determinable without running the body of the function. By default the decorator
    assumes there to be a _single_ output, but it can be set to another constant value in the decorator:
    ```
-   @node(outs=2)
+   @task(outs=2)
    def my_function(input_value)
    ```
 
    If the number of outputs is variable and depends on the input arguments, `outs` can be set to a callable function with the
    same signature as the original function that returns the number of outputs:
    ```
-   @node(outs=lambda input_value, k: k)
+   @task(outs=lambda input_value, k: k)
    def my_clustering_function(input_value, k=3)
    ```
    Note that the input arguments may contain futures for upstream calcalations that cannot be accessed.
 
-The `node` decorator also takes these optional arguments:
+The `task` decorator also takes these optional arguments:
 
 * `serializers`: a map between out index and a MerkLSerializer class. The default serializer is JsonSerializer
 * `cache_policy`: either a CachePolicy object or a map between output index and CachePolicy objects
@@ -107,7 +107,7 @@ The `node` decorator also takes these optional arguments:
 Pipelines can be defined anywhere, but can usefully be defined in a self-contained function, which can then be run with the `merkl
 run <module>.<function>` command, or reused in a script.
 
-When calling a MerkL node function, it returns one or several `MerkLFuture` _placeholder_ objects (depending on number of
+When calling a MerkL task function, it returns one or several `MerkLFuture` _placeholder_ objects (depending on number of
 outs), which represents an value that hasn't been computed or fetched yet. In order to access the actual value, call
 the `.get()` method on the future. This will perform the computation of the output and all needed preceding values
 recursively, using cached values when available.
