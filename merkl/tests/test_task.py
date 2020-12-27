@@ -5,7 +5,7 @@ from io import StringIO
 from merkl.tests.tasks.embed_bert import embed_bert, embed_bert_large
 from merkl.tests.tasks.embed_elmo import embed_elmo
 from merkl.tests.tasks.cluster import cluster
-from merkl.pipeline import MerkLFuture, task, HashMode
+from merkl.task import MerkLFuture, task, HashMode
 from merkl.exceptions import *
 
 
@@ -23,7 +23,7 @@ def get_stderr(f):
     return out, err_output
 
 
-class TestMerkL(unittest.TestCase):
+class TestTask(unittest.TestCase):
     def test_task_hashing(self):
         # Test that hash is the same every time
         self.assertEqual(embed_bert('sentence').hash, embed_bert('sentence').hash)
