@@ -17,14 +17,14 @@ class HashMode(Enum):
     FUNCTION = 2
 
 
-def map_merkl_future_to_value(val):
-    if isinstance(val, MerkLFuture):
+def map_placeholder_to_value(val):
+    if isinstance(val, Placeholder):
         return val.get()
     return val
 
 
-def map_merkl_future_to_hash(val):
-    if isinstance(val, MerkLFuture):
+def map_placeholder_to_hash(val):
+    if isinstance(val, Placeholder):
         return {'merkl_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
         raise NonSerializableArgError
@@ -43,7 +43,7 @@ def validate_outs(outs, sig=None):
         raise BadOutsValueError
 
 
-class MerkLFuture:
+class Placeholder:
     def __init__(
         self,
         fn,
@@ -69,8 +69,8 @@ class MerkLFuture:
         self.outs_result_cache = outs_result_cache or {}
 
     def get(self):
-        evaluated_args = nested_map(self.bound_args.args, map_merkl_future_to_value) if self.bound_args else []
-        evaluated_kwargs = nested_map(self.bound_args.kwargs, map_merkl_future_to_value) if self.bound_args else {}
+        evaluated_args = nested_map(self.bound_args.args, map_placeholder_to_value) if self.bound_args else []
+        evaluated_kwargs = nested_map(self.bound_args.kwargs, map_placeholder_to_value) if self.bound_args else {}
 
         if self.code_args_hash in self.outs_result_cache:
             output = self.outs_result_cache.get(self.code_args_hash)
@@ -86,13 +86,16 @@ class MerkLFuture:
 
         return output
 
+    def __repr__(self):
+        return f'<Placeholder: {self.hash[:8]}>'
+
     def deny_access(self, *args, **kwargs):
-        raise FutureAccessError
+        raise PlaceholderAccessError
 
 
-# Override all the operators of MerkLFuture to raise a specific exception when used
+# Override all the operators of Placeholder to raise a specific exception when used
 for name in OPERATORS:
-    setattr(MerkLFuture, name, MerkLFuture.deny_access)
+    setattr(Placeholder, name, Placeholder.deny_access)
 
 
 @doublewrap
@@ -131,8 +134,8 @@ def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
 
         # Hash args, kwargs and code together
         hash_data = {
-            'args': nested_map(bound_args.args, map_merkl_future_to_hash, convert_tuples_to_lists=True),
-            'kwargs': nested_map(bound_args.kwargs, map_merkl_future_to_hash, convert_tuples_to_lists=True),
+            'args': nested_map(bound_args.args, map_placeholder_to_hash, convert_tuples_to_lists=True),
+            'kwargs': nested_map(bound_args.kwargs, map_placeholder_to_hash, convert_tuples_to_lists=True),
             'function_name': f.__name__,
             'function_code': code,
             'function_deps': deps,
@@ -154,7 +157,7 @@ def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
             output_hash = m.hexdigest()
             serializer = out_serializers.get(i, PickleSerializer)
             cache_policy = out_cache_policy.get(i, None)
-            output = MerkLFuture(
+            output = Placeholder(
                 f,
                 output_hash,
                 resolved_outs,

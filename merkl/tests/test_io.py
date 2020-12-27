@@ -1,6 +1,6 @@
 import os
 import unittest
-from merkl.io import get_file_future, get_fileobject_future, track_file
+from merkl.io import get_file_placeholder, get_fileobject_placeholder, track_file
 from merkl.exceptions import FileNotTrackedError
 
 
@@ -40,15 +40,15 @@ class TestIO(unittest.TestCase):
 
     def test_file_future(self):
         with self.assertRaises(FileNotTrackedError):
-            get_file_future('non_existant_file.txt', 'r')
+            get_file_placeholder('non_existant_file.txt', 'r')
 
         track_file(self.tmp_file, self.gitignore_file)
-        ff = get_file_future(self.tmp_file, 'r')
+        ff = get_file_placeholder(self.tmp_file, 'r')
         self.assertEqual(ff.get(), 'hello world')
 
     def test_fileobject_future(self):
         track_file(self.tmp_file, self.gitignore_file)
-        fof = get_fileobject_future(self.tmp_file, 'r')
+        fof = get_fileobject_placeholder(self.tmp_file, 'r')
         with fof.get() as f:
             self.assertEqual(f.read(), 'hello world')
 
