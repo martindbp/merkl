@@ -8,8 +8,7 @@ cachable intermediate and final results, suitable both for development and produ
 These are the relevant problems MerkL tries to tackle when developing, deploying and productionizing ML models and pipelines:
 
 * Large training datasets and binary models are too large to version in git
-* Code and data and results need to be versioned together so that you can track experiments, deploy easily, and know how
-  a result was calculated (provenance)
+* Code and data and results need to be versioned together so that you can track experiments, deploy easily, and know how a result was calculated (provenance)
 * It would be benfitial to be able to use the same tools for ML as for the rest of the product
 * In production and development, we want to cache final and intermediate results of ML pipelines
 * We want to be able to create a pipeline during development, and easily deploy it without having to reimplement it

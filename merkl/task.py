@@ -51,40 +51,44 @@ class Placeholder:
         num_outs=1,
         code_args_hash=None,
         output_index=None,
+        caches=None,
         serializer=None,
-        cache_policy=None,
         bound_args=None,
-        outs_result_cache=None,
+        outs_shared_cache=None,
     ):
         self.fn = fn
         self.hash = output_hash
         self.num_outs = num_outs
         self.code_args_hash = code_args_hash
         self.output_index = output_index
+        self.caches = caches
         self.serializer = serializer
-        self.cache_policy = cache_policy
         self.bound_args = bound_args
 
         # Cache for the all outputs with the respect to a function and its args
-        self.outs_result_cache = outs_result_cache or {}
+        self.outs_shared_cache = outs_shared_cache or {}
 
     def get(self):
         evaluated_args = nested_map(self.bound_args.args, map_placeholder_to_value) if self.bound_args else []
         evaluated_kwargs = nested_map(self.bound_args.kwargs, map_placeholder_to_value) if self.bound_args else {}
 
-        if self.code_args_hash in self.outs_result_cache:
-            output = self.outs_result_cache.get(self.code_args_hash)
+        if self.code_args_hash in self.outs_shared_cache:
+            output = self.outs_shared_cache.get(self.code_args_hash)
         else:
             output = self.fn(*evaluated_args, **evaluated_kwargs)
-            self.outs_result_cache[self.code_args_hash] = output
+            self.outs_shared_cache[self.code_args_hash] = output
 
+        out = output
         if self.output_index is not None:
-            return output[self.output_index]
+            out = output[self.output_index]
 
         if isinstance(output, tuple) and len(output) != self.num_outs:
             raise WrongNumberOfOutsError
 
-        return output
+        for cache in caches:
+            cache.put(out, self.hash)
+
+        return out
 
     def __repr__(self):
         return f'<Placeholder: {self.hash[:8]}>'
@@ -99,7 +103,7 @@ for name in OPERATORS:
 
 
 @doublewrap
-def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, out_cache_policy={}):
+def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], caches=[], serializer=None):
     sig = signature(f)
 
     if outs is not None:
@@ -148,7 +152,7 @@ def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
         validate_outs(resolved_outs)
 
         outputs = []
-        outs_result_cache = {}
+        outs_shared_cache = {}
         for i in range(resolved_outs):
             m = hashlib.sha256()
             m.update(bytes(code_args_hash, 'utf-8'))
@@ -163,10 +167,10 @@ def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], out_serializers={}, o
                 resolved_outs,
                 code_args_hash,
                 i if resolved_outs > 1 else None,
+                caches,
                 serializer,
-                cache_policy,
                 bound_args,
-                outs_result_cache,
+                outs_shared_cache,
             )
             outputs.append(output)
 
