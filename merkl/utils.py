@@ -48,6 +48,18 @@ def nested_map(structure, map_function, convert_tuples_to_lists=False):
     return map_function(structure)
 
 
+def nested_collect(structure, collect_function):
+    collected = []
+    def _collect(val):
+        if collect_function(val):
+            collected.append(val)
+
+        return val
+
+    nested_map(structure, _collect)
+    return collected
+
+
 def get_hash_memory_optimized(f_path, mode='md5'):
     h = hashlib.new(mode)
     with open(f_path, 'rb') as file:

@@ -21,7 +21,6 @@ Mark a task as a batch version of another task -> hashes of outputs use the code
 Visualize graph using graphviz
     Update graph for different events such as: function called, future evaluated, value retrieved from cache etc
     Show code and highlight line next to graph
-    Instead of having graphviz as a dependency, allow exporting .dot files, which can be piped into graphviz?
     Option to output all steps of `merkl run` to a folder
 Provide task wrapper for executing shell commands
     Provide file content and fileobject variants
@@ -29,3 +28,6 @@ Provide task wrapper for executing shell commands
 Add type hints / mypy
 Build CLI for `merkl run <module>.<function>`
     Add --dry option
+Lazily do work in Placeholders. Do it from the back so we hit later cached values first and avoid unecessary work in the beginning of the pipeline
+Rename Placeholder back to Future: a task can be eager or lazy. If eager, we execute right away and put in cache unless
+already in cache. We can also execute it in another process (hence future)

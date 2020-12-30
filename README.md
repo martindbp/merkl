@@ -54,6 +54,7 @@ Paths for the outputs to be written to can be supplied with the `-n <file>` opti
 --dry: only the hashes are calculated, not the actual output values
 --fill-missing: fill in any missing function arguments with placeholder values (for dry runs)
 --no-cache: do not fetch values from caches
+--graph: outputs a graph in the dot format, which can be piped into `dot` and visualized with imagemagick: `merkl run --graph <module>.<pipeline> | dot -Tpng | display
 
 `merkl push [<file>]`
 Pushes tracked file to remote storage, e.g. Redis, S3, a relational database or a combination of destinations. If no

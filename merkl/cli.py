@@ -3,7 +3,14 @@ import sys
 import argparse
 from pathlib import Path
 
-from merkl.api import MerkLAPI
+from merkl.api_run import RunAPI
+from merkl.api_track import TrackAPI
+
+
+class MerkLAPI:
+    run = RunAPI()
+    track = TrackAPI()
+
 
 def main():
     cwd = Path.cwd()
@@ -30,6 +37,7 @@ def main():
         'run', description='Run a task or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
+    run_parser.add_argument('--graph', action='store_true', help='Outputs dot graph')
 
     # ------------- TRACK ------------
     track_parser = subparsers.add_parser(

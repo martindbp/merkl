@@ -3,7 +3,7 @@ import numpy as np
 
 
 @task(outs=2)
-def cluster(asd, *embedded_sentences, k=3):
+def cluster(*embedded_sentences, k=3):
     indices = list(range(len(embedded_sentences)))
     mid = len(indices)//2
     clusters = [indices[:mid], indices[mid:]]
