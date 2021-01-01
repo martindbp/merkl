@@ -8,14 +8,6 @@ def map_future_to_value(val):
     return val
 
 
-def map_future_to_hash(val):
-    if isinstance(val, Future):
-        return {'merkl_hash': val.hash}
-    elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
-        raise NonSerializableArgError
-    return val
-
-
 class Future:
     def __init__(
         self,
@@ -52,12 +44,11 @@ class Future:
         )
 
     def get(self):
-        evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
-        evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
-
         if self.code_args_hash in self.outs_shared_cache:
             output = self.outs_shared_cache.get(self.code_args_hash)
         else:
+            evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
+            evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
             output = self.fn(*evaluated_args, **evaluated_kwargs)
             self.outs_shared_cache[self.code_args_hash] = output
 

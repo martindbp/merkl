@@ -6,7 +6,8 @@ from functools import wraps, lru_cache
 from inspect import signature, getsource, isfunction, ismodule, getmodule
 from merkl.serializers import PickleSerializer
 from merkl.utils import doublewrap, nested_map, get_function_return_type_length
-from merkl.future import Future, map_future_to_hash, map_future_to_value
+from merkl.future import Future
+from merkl.io import map_to_hash
 from merkl.exceptions import *
 
 getsource_cached = lru_cache()(getsource)
@@ -64,8 +65,8 @@ def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], caches=[], serializer
 
         # Hash args, kwargs and code together
         hash_data = {
-            'args': nested_map(bound_args.args, map_future_to_hash, convert_tuples_to_lists=True),
-            'kwargs': nested_map(bound_args.kwargs, map_future_to_hash, convert_tuples_to_lists=True),
+            'args': nested_map(bound_args.args, map_to_hash, convert_tuples_to_lists=True),
+            'kwargs': nested_map(bound_args.kwargs, map_to_hash, convert_tuples_to_lists=True),
             'function_name': f.__name__,
             'function_code': code,
             'function_deps': deps,

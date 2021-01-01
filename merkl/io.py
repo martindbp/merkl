@@ -2,9 +2,32 @@ import os
 import pathlib
 import json
 from datetime import datetime
-from merkl.exceptions import FileNotTrackedError
-from merkl.task import Future
+from merkl.future import Future
+from merkl.exceptions import FileNotTrackedError, NonSerializableArgError
 from merkl.utils import get_hash_memory_optimized
+
+
+class TrackedPath:
+    """ Class to indicate that path refers to a merkl-tracked file, and hash should be used instead of path string as
+    dependency """
+    def __init__(self, path):
+        self.path = path
+        merkl_path = path + '.merkl'
+        if not os.path.exists(merkl_path):
+            raise FileNotTrackedError
+
+        with open(merkl_path, 'r') as f:
+            self.hash = json.loads(f.read())['md5_hash']
+
+
+def map_to_hash(val):
+    if isinstance(val, Future):
+        return {'merkl_hash': val.hash}
+    elif isinstance(val, TrackedPath):
+        return {'md5_hash': val.hash}
+    elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
+        raise NonSerializableArgError
+    return val
 
 
 def track_file(file_path, gitignore_path='.gitignore'):
