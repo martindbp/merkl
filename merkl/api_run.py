@@ -2,23 +2,23 @@ import functools
 from importlib import import_module
 import clize
 
-from merkl.placeholder import Placeholder, map_placeholder_to_value
+from merkl.future import Future, map_future_to_value
 from merkl.utils import nested_map, nested_collect
 from merkl.dot_graph import print_dot_graph
 
 
-def evaluate_placeholders_wrapper(f):
+def evaluate_futures_wrapper(f):
     @functools.wraps(f)
     def _wrapper(*args, **kwargs):
-        return nested_map(f(*args, **kwargs), map_placeholder_to_value)
+        return nested_map(f(*args, **kwargs), map_future_to_value)
     return _wrapper
 
 
 def print_graph_wrapper(f):
     @functools.wraps(f)
     def _wrapper(*args, **kwargs):
-        placeholders = nested_collect(f(*args, **kwargs), lambda x: isinstance(x, Placeholder))
-        print_dot_graph(placeholders)
+        futures = nested_collect(f(*args, **kwargs), lambda x: isinstance(x, Future))
+        print_dot_graph(futures)
 
     return _wrapper
 
@@ -32,7 +32,7 @@ class RunAPI:
         if graph:
             function = print_graph_wrapper(function)
         else:
-            # Function output values may contain Placeholders, so wrap the function to evaluate them
-            function = evaluate_placeholders_wrapper(function)
+            # Function output values may contain Futures, so wrap the function to evaluate them
+            function = evaluate_futures_wrapper(function)
 
         clize.run(function, args=['merkl-run', *self.unknown_args])

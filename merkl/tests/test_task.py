@@ -5,7 +5,7 @@ from io import StringIO
 from merkl.tests.tasks.embed_bert import embed_bert, embed_bert_large
 from merkl.tests.tasks.embed_elmo import embed_elmo
 from merkl.tests.tasks.cluster import cluster
-from merkl.placeholder import Placeholder
+from merkl.future import Future
 from merkl.task import task, HashMode
 from merkl.exceptions import *
 
@@ -69,7 +69,7 @@ class TestTask(unittest.TestCase):
         # Single output by default
         self.assertEqual(len(outs), 2)
         for out in outs:
-            self.assertTrue(isinstance(out, Placeholder))
+            self.assertTrue(isinstance(out, Future))
 
         with self.assertRaises(NumReturnValuesMismatchError):
             @task
@@ -85,15 +85,15 @@ class TestTask(unittest.TestCase):
                 return input_value, 2, 3
             return input_value, 3
 
-        # Single return value of other type than tuple should just produce a single Placeholder
+        # Single return value of other type than tuple should just produce a single Future
         @task
         def _task1(input_value):
             return {'key1': 1, 'key2': input_value*2}
 
         out = _task1('test')
-        self.assertTrue(isinstance(out, Placeholder))
+        self.assertTrue(isinstance(out, Future))
 
-        # Now set outs to 2, so we get two separate placeholders
+        # Now set outs to 2, so we get two separate futures
         @task(outs=2)
         def _task2(input_value):
             return input_value, 3
@@ -180,29 +180,29 @@ class TestTask(unittest.TestCase):
         self.assertEqual(len(set(hashes[:3])), 3)
         self.assertEqual(len(set(hashes[3:])), 1)
 
-    def test_placeholder_operator_access(self):
-        # Test that Placeholder cannot be accessed by checking some operators
-        placeholder = embed_bert('sentence')
-        with self.assertRaises(PlaceholderAccessError):
+    def test_future_operator_access(self):
+        # Test that Future cannot be accessed by checking some operators
+        future = embed_bert('sentence')
+        with self.assertRaises(FutureAccessError):
             # Can't be added to set
-            set([placeholder])
+            set([future])
 
-        with self.assertRaises(PlaceholderAccessError):
+        with self.assertRaises(FutureAccessError):
             # Can't be used as a truth value in statements
-            if placeholder:
+            if future:
                 print('hello world')
 
-        with self.assertRaises(PlaceholderAccessError):
+        with self.assertRaises(FutureAccessError):
             # Can't be iterated over
-            for x in placeholder:
+            for x in future:
                 print('hello world')
 
-        with self.assertRaises(PlaceholderAccessError):
+        with self.assertRaises(FutureAccessError):
             # Can't get a length from it
-            print(len(placeholder))
+            print(len(future))
 
-        with self.assertRaises(PlaceholderAccessError):
-            placeholder += 1
+        with self.assertRaises(FutureAccessError):
+            future += 1
 
 
 if __name__ == '__main__':

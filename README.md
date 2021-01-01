@@ -52,7 +52,7 @@ MerkL provides this command to move large files such as ML data sets or models t
 Run a pipeline or task function. Command line arguments are passed on as function arguments. The pipeline function is turned into a CLI using the [clize](https://clize.readthedocs.io/en/stable/#) library.
 Paths for the outputs to be written to can be supplied with the `-n <file>` option, where n takes the value of the output index.
 --dry: only the hashes are calculated, not the actual output values
---fill-missing: fill in any missing function arguments with placeholder values (for dry runs)
+--fill-missing: fill in any missing function arguments with future values (for dry runs)
 --no-cache: do not fetch values from caches
 --graph: outputs a graph in the dot format, which can be piped into `dot` and visualized with imagemagick: `merkl run --graph <module>.<pipeline> | dot -Tpng | display
 
@@ -92,7 +92,7 @@ Node functions have these restrictions:
    @task(outs=lambda input_value, k: k)
    def my_clustering_function(input_value, k=3)
    ```
-   Note that the input arguments may contain placeholders for upstream calcalations that cannot be accessed.
+   Note that the input arguments may contain futures for upstream calcalations that cannot be accessed.
 
 The `task` decorator also takes these optional arguments:
 
@@ -107,9 +107,9 @@ The `task` decorator also takes these optional arguments:
 Pipelines can be defined anywhere, but can usefully be defined in a self-contained function, which can then be run with the `merkl
 run <module>.<function>` command, or reused in a script.
 
-When calling a MerkL task function, it returns one or several _Placeholder_ objects (depending on number of
+When calling a MerkL task function, it returns one or several _Future_ objects (depending on number of
 outs), which represents an value that hasn't been computed or fetched yet. In order to access the actual value, call
-the `.get()` method on the placeholder. This will perform the computation of the output and all needed preceding values
+the `.get()` method on the future. This will perform the computation of the output and all needed preceding values
 recursively, using cached values when available.
 
 To persist a computed output to disk, call the `write_file(output, track=[True/False])` function. If `track=False`, the

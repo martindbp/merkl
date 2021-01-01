@@ -3,7 +3,7 @@ import pathlib
 import json
 from datetime import datetime
 from merkl.exceptions import FileNotTrackedError
-from merkl.task import Placeholder
+from merkl.task import Future
 from merkl.utils import get_hash_memory_optimized
 
 
@@ -52,7 +52,7 @@ def cache_file(md5_hash):
     return f'{cache_dir(md5_hash)}/{md5_hash}'
 
 
-def get_file_placeholder(path, flags):
+def get_file_future(path, flags):
     merkl_file = path + '.merkl'
     if not os.path.exists(merkl_file):
         raise FileNotTrackedError
@@ -64,13 +64,13 @@ def get_file_placeholder(path, flags):
         with open(cache_file(md5_hash), flags) as f:
             return f.read()
 
-    return Placeholder(
+    return Future(
         fn=_read_file,
         output_hash=md5_hash,
     )
 
 
-def get_fileobject_placeholder(path, flags):
+def get_fileobject_future(path, flags):
     merkl_file = path + '.merkl'
     if not os.path.exists(merkl_file):
         raise FileNotTrackedError
@@ -81,7 +81,7 @@ def get_fileobject_placeholder(path, flags):
     def _get_fileobject():
         return open(cache_file(md5_hash), flags)
 
-    return Placeholder(
+    return Future(
         fn=_get_fileobject,
         output_hash=md5_hash,
     )

@@ -1,4 +1,4 @@
-class PlaceholderAccessError(BaseException):
+class FutureAccessError(BaseException):
     pass
 
 
