@@ -31,3 +31,4 @@ Build CLI for `merkl run <module>.<function>`
 Lazily do work in Placeholders. Do it from the back so we hit later cached values first and avoid unecessary work in the beginning of the pipeline
 Rename Placeholder back to Future: a task can be eager or lazy. If eager, we execute right away and put in cache unless
 already in cache. We can also execute it in another process (hence future)
+Use setuptools for CLI

@@ -1,1 +1,2 @@
 clize==4.1.1
+setuptools==49.2.0
