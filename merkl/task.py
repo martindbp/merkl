@@ -30,7 +30,7 @@ def validate_outs(outs, sig=None):
 
 
 @doublewrap
-def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], caches=[], serializer=None):
+def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=[], caches=[], serializer=None):
     sig = signature(f)
 
     if outs is not None:
