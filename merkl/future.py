@@ -44,13 +44,14 @@ class Future:
         )
 
     def get(self):
-        if self.code_args_hash in self.outs_shared_cache:
+        if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
             output = self.outs_shared_cache.get(self.code_args_hash)
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
             output = self.fn(*evaluated_args, **evaluated_kwargs)
-            self.outs_shared_cache[self.code_args_hash] = output
+            if self.code_args_hash:
+                self.outs_shared_cache[self.code_args_hash] = output
 
         out = output
         if self.output_index is not None:

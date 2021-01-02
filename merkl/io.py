@@ -21,13 +21,44 @@ class TrackedPath:
 
 
 def map_to_hash(val):
-    if isinstance(val, Future):
-        return {'merkl_hash': val.hash}
-    elif isinstance(val, TrackedPath):
-        return {'md5_hash': val.hash}
+    if hasattr(val, 'hash'):
+        # Futures and TrackedPaths has 'hash' attribute
+        return {'_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
         raise NonSerializableArgError
     return val
+
+
+class FileObjectFuture(Future):
+    def __init__(self, path, flags):
+        merkl_file = path + '.merkl'
+        if not os.path.exists(merkl_file):
+            raise FileNotTrackedError
+
+        with open(merkl_file) as f:
+            output_hash = json.load(f)['md5_hash']
+
+        def _get_file_object():
+            return open(cache_file(output_hash), flags)
+
+        super().__init__(_get_file_object, output_hash)
+
+
+class FileContentFuture(Future):
+    def __init__(self, path, flags):
+        merkl_file = path + '.merkl'
+        if not os.path.exists(merkl_file):
+            raise FileNotTrackedError
+
+        with open(merkl_file) as f:
+            output_hash = json.load(f)['md5_hash']
+
+        def _read_file():
+            with open(cache_file(output_hash), flags) as f:
+                return f.read()
+
+
+        super().__init__(_read_file, output_hash)
 
 
 def track_file(file_path, gitignore_path='.gitignore'):
@@ -73,38 +104,3 @@ def cache_dir(md5_hash):
 
 def cache_file(md5_hash):
     return f'{cache_dir(md5_hash)}/{md5_hash}'
-
-
-def get_file_future(path, flags):
-    merkl_file = path + '.merkl'
-    if not os.path.exists(merkl_file):
-        raise FileNotTrackedError
-
-    with open(merkl_file) as f:
-        md5_hash = json.load(f)['md5_hash']
-
-    def _read_file():
-        with open(cache_file(md5_hash), flags) as f:
-            return f.read()
-
-    return Future(
-        fn=_read_file,
-        output_hash=md5_hash,
-    )
-
-
-def get_fileobject_future(path, flags):
-    merkl_file = path + '.merkl'
-    if not os.path.exists(merkl_file):
-        raise FileNotTrackedError
-
-    with open(merkl_file) as f:
-        md5_hash = json.load(f)['md5_hash']
-
-    def _get_fileobject():
-        return open(cache_file(md5_hash), flags)
-
-    return Future(
-        fn=_get_fileobject,
-        output_hash=md5_hash,
-    )

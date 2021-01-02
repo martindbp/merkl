@@ -53,17 +53,17 @@ class TestIO(unittest.TestCase):
             new_md5_hash = json.loads(f.read())['md5_hash']
             self.assertNotEqual(new_md5_hash, md5_hash)
 
-    def test_file_future(self):
+    def test_file_content_future(self):
         with self.assertRaises(FileNotTrackedError):
-            get_file_future('non_existant_file.txt', 'r')
+            FileContentFuture('non_existant_file.txt', 'r')
 
         track_file(self.tmp_file, self.gitignore_file)
-        ff = get_file_future(self.tmp_file, 'r')
+        ff = FileContentFuture(self.tmp_file, 'r')
         self.assertEqual(ff.get(), 'hello world')
 
-    def test_fileobject_future(self):
+    def test_file_object_future(self):
         track_file(self.tmp_file, self.gitignore_file)
-        fof = get_fileobject_future(self.tmp_file, 'r')
+        fof = FileObjectFuture(self.tmp_file, 'r')
         with fof.get() as f:
             self.assertEqual(f.read(), 'hello world')
 
