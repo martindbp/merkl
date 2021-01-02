@@ -1,5 +1,6 @@
 import os
 import json
+import shutil
 import unittest
 from pathlib import Path
 from merkl import *
@@ -7,21 +8,23 @@ from merkl.exceptions import FileNotTrackedError
 
 
 class TestIO(unittest.TestCase):
-    tmp_file = '/tmp/tmpfile.txt'
-    gitignore_file = '/tmp/.gitignore'
+    tmp_file = '/tmp/merkl/tmpfile.txt'
+    tmp_file2 = '/tmp/merkl/tmpfile2.txt'
+    gitignore_file = '/tmp/merkl/.gitignore'
 
     def setUp(self):
+        os.makedirs('/tmp/merkl/', exist_ok=True)
         with open(self.tmp_file, 'w') as f:
             f.write('hello world')
+
+        with open(self.tmp_file2, 'w') as f:
+            f.write('hej världen')
 
         with open(self.gitignore_file, 'w') as f:
             f.write('testfile.txt')
 
     def tearDown(self):
-        os.remove(self.tmp_file)
-        os.remove(self.gitignore_file)
-        if os.path.exists(self.tmp_file + '.merkl'):
-            os.remove(self.tmp_file + '.merkl')
+        shutil.rmtree('/tmp/merkl/')
 
     def test_tracking(self):
         track_file(self.tmp_file, self.gitignore_file)
@@ -83,6 +86,31 @@ class TestIO(unittest.TestCase):
         out2 = task1(TrackedPath(self.tmp_file))
 
         self.assertNotEqual(out1.hash, out2.hash)
+
+    def test_tracked_paths(self):
+        track_file(self.tmp_file, self.gitignore_file)
+        track_file(self.tmp_file2, self.gitignore_file)
+
+        @task
+        def task1():
+            return 1
+
+        @task(deps=[TrackedPath(self.tmp_file)])
+        def task2():
+            return 1
+
+        tracked_paths = TrackedPath.get_dir_paths('/tmp/merkl/')
+        self.assertEqual(len(tracked_paths), 2)
+
+        @task(deps=tracked_paths)
+        def task3():
+            return 1
+
+        out1 = task1()
+        out2 = task2()
+        out3 = task3()
+        self.assertNotEqual(out1.hash, out2.hash)
+        self.assertNotEqual(out2.hash, out3.hash)
 
 
 if __name__ == '__main__':

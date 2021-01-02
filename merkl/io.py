@@ -19,6 +19,13 @@ class TrackedPath:
         with open(merkl_path, 'r') as f:
             self.hash = json.loads(f.read())['md5_hash']
 
+    @classmethod
+    def get_dir_paths(cls, path):
+        tracked_paths = []
+        for path in pathlib.Path(path).rglob('*.merkl'):
+            tracked_paths.append(TrackedPath(str(path).rstrip('.merkl')))
+        return tracked_paths
+
 
 def map_to_hash(val):
     if hasattr(val, 'hash'):

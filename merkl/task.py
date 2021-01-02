@@ -7,7 +7,7 @@ from inspect import signature, getsource, isfunction, ismodule, getmodule
 from merkl.serializers import PickleSerializer
 from merkl.utils import doublewrap, nested_map, get_function_return_type_length
 from merkl.future import Future
-from merkl.io import map_to_hash
+from merkl.io import map_to_hash, TrackedPath
 from merkl.exceptions import *
 
 getsource_cached = lru_cache()(getsource)
@@ -52,6 +52,8 @@ def task(f, outs=None, hash_mode=HashMode.MODULE, deps=[], caches=[], serializer
             deps[i] = textwrap.dedent(getsource_cached(dep))
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
+        elif isinstance(dep, TrackedPath):
+            deps[i] = dep.hash
         elif not isinstance(dep, str):
             raise NonSerializableFunctionDepError
 
