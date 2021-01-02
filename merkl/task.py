@@ -53,7 +53,7 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=[], caches=[], serializ
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
         elif isinstance(dep, TrackedPath):
-            deps[i] = dep.hash
+            deps[i] = repr(dep)
         elif not isinstance(dep, str):
             raise NonSerializableFunctionDepError
 
@@ -103,6 +103,7 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=[], caches=[], serializ
                 resolved_outs,
                 code_args_hash,
                 i if resolved_outs > 1 else None,
+                deps,
                 caches,
                 out_serializer,
                 bound_args,

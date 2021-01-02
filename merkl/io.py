@@ -26,6 +26,9 @@ class TrackedPath:
             tracked_paths.append(TrackedPath(str(path).rstrip('.merkl')))
         return tracked_paths
 
+    def __repr__(self):
+        return f'TrackedPath: {self.hash}'
+
 
 def map_to_hash(val):
     if hasattr(val, 'hash'):

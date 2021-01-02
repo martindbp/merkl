@@ -16,6 +16,7 @@ class Future:
         num_outs=1,
         code_args_hash=None,
         output_index=None,
+        deps=[],
         caches=[],
         serializer=None,
         bound_args=None,
@@ -26,6 +27,7 @@ class Future:
         self.num_outs = num_outs
         self.code_args_hash = code_args_hash
         self.output_index = output_index
+        self.deps = deps
         self.caches = caches
         self.serializer = serializer
         self.bound_args = bound_args
@@ -42,6 +44,13 @@ class Future:
             nested_collect(self.bound_args.args, is_future) +
             nested_collect(self.bound_args.kwargs, is_future)
         )
+
+    def in_cache(self):
+        for cache in self.caches:
+            if cache.has(self.output_hash):
+                return True
+
+        return False
 
     def get(self):
         if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
