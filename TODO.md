@@ -19,6 +19,8 @@ Have a `pipeline` version of the task decorator, which executes the function ins
     changed
 Mark a task as a batch version of another task -> hashes of outputs use the code of the single-use task
 Visualize graph using graphviz
+    Show cached futures in green and uncached in red
+    Show deps inside the function node
     Update graph for different events such as: function called, future evaluated, value retrieved from cache etc
     Show code and highlight line next to graph
     Option to output all steps of `merkl run` to a folder
@@ -29,6 +31,5 @@ Add type hints / mypy
 Build CLI for `merkl run <module>.<function>`
     Add --dry option
 Lazily do work in Futures. Do it from the back so we hit later cached values first and avoid unecessary work in the beginning of the pipeline
-Rename Future back to Future: a task can be eager or lazy. If eager, we execute right away and put in cache unless
+Idea: A task can be eager or lazy. If eager, we execute right away and put in cache unless
 already in cache. We can also execute it in another process (hence future)
-Use setuptools for CLI
