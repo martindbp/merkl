@@ -57,6 +57,9 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=[], caches=[], serializ
         elif not isinstance(dep, str):
             raise NonSerializableFunctionDepError
 
+    if not isinstance(hash_mode, HashMode):
+        raise TypeError
+
     code_obj = getmodule(f) if hash_mode == HashMode.MODULE else f
     code = textwrap.dedent(getsource_cached(code_obj))
 

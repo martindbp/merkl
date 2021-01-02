@@ -146,6 +146,9 @@ class TestTask(unittest.TestCase):
         def _task1(input_value):
             return input_value, 3
 
+        with self.assertRaises(TypeError):
+            _task1_file = task(hash_mode='not a hash mode')(_task1)
+
         _task1_file = task(hash_mode=HashMode.MODULE)(_task1)
         _task1_function = task(hash_mode=HashMode.FUNCTION)(_task1)
         for out1, out2 in zip(_task1_file('test'), _task1_function('test')):
