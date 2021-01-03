@@ -10,6 +10,8 @@ from merkl.utils import get_hash_memory_optimized
 class TrackedPath:
     """ Class to indicate that path refers to a merkl-tracked file, and hash should be used instead of path string as
     dependency """
+    __slots__ = ['path', 'hash']
+
     def __init__(self, path):
         self.path = path
         merkl_path = path + '.merkl'

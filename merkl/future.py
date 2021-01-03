@@ -9,6 +9,11 @@ def map_future_to_value(val):
 
 
 class Future:
+    __slots__ = [
+        'fn', 'hash', 'num_outs', 'code_args_hash', 'output_index', 'deps',
+        'caches', 'serializer', 'bound_args', 'outs_shared_cache'
+    ]
+
     def __init__(
         self,
         fn,
