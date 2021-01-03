@@ -2,9 +2,10 @@ import os
 import json
 import shutil
 import unittest
+from time import sleep
 from pathlib import Path
 from merkl import *
-from merkl.exceptions import FileNotTrackedError
+from merkl.exceptions import FileNotTrackedError, TrackedFileNotUpToDateError
 
 
 class TestIO(unittest.TestCase):
@@ -55,6 +56,14 @@ class TestIO(unittest.TestCase):
         with open(self.tmp_file + '.merkl') as f:
             new_md5_hash = json.loads(f.read())['md5_hash']
             self.assertNotEqual(new_md5_hash, md5_hash)
+
+        # Check that we get an exception if we try to use a tracked file that is not up to date with the actual file
+        sleep(0.01)
+        with open(self.tmp_file, 'w') as f:
+            f.write('goodbye cruel world')
+
+        with self.assertRaises(TrackedFileNotUpToDateError):
+            FileContentFuture(self.tmp_file, 'r')
 
     def test_file_content_future(self):
         with self.assertRaises(FileNotTrackedError):

@@ -36,3 +36,7 @@ class ReturnTypeMismatchError(BaseException):
 
 class NumReturnValuesMismatchError(BaseException):
     pass
+
+
+class TrackedFileNotUpToDateError(BaseException):
+    pass
