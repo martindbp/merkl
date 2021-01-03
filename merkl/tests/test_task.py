@@ -116,6 +116,11 @@ class TestTask(unittest.TestCase):
             def _task4(input_value, k):
                 return input_value, 3
 
+        # A differing default value should not raise error
+        @task(outs=lambda input_value, *args, k: k)
+        def _task4(input_value, *args, k=3):
+            return input_value, 3
+
         # Check that we get error if we return wrong number of outs
         @task(outs=1)
         def _task5(input_value):

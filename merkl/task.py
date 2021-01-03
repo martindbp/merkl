@@ -23,7 +23,7 @@ def validate_outs(outs, sig=None):
             raise NonPositiveOutsError
     elif callable(outs) and sig is not None:
         outs_sig = signature(outs)
-        if outs_sig != sig:
+        if outs_sig.parameters.keys() != sig.parameters.keys():
             raise NonMatchingSignaturesError
     else:
         raise BadOutsValueError
