@@ -1,3 +1,6 @@
+Mark a task as a batch version of another task -> hashes of outputs use the code of the single-use task
+Implement --pull option for run command, that doesn't run, just pulls the tracked files and cached futures
+    For tracked files, need to modify the timestamp to match the one in the .merkl file
 Have a cache backend that dedupes using content hash.
     Cache backend gets content, merkle hash and content hash and can decide itself how to store/recover an item
     Default backend: stores merkle hash -> content hash in SQLite, as well as small contents. Large contents are stored
@@ -17,19 +20,10 @@ Have a `pipeline` version of the task decorator, which executes the function ins
     Need a serializer/deserializer for Future, or is pickle fine? Need to restore the correct cache backend for the
     future too. When pickled, we may need to include the merkl version number in case the merkl implemetation
     changed
-Mark a task as a batch version of another task -> hashes of outputs use the code of the single-use task
-Visualize graph using graphviz
-    Show cached futures in green and uncached in red
-    Show deps inside the function node
-    Update graph for different events such as: function called, future evaluated, value retrieved from cache etc
-    Show code and highlight line next to graph
-    Option to output all steps of `merkl run` to a folder
 Provide task wrapper for executing shell commands
     Provide file content and fileobject variants
     Provide paths to named pipes instead of output files for the shell command?
 Add type hints / mypy
-Build CLI for `merkl run <module>.<function>`
-    Add --dry option
 Lazily do work in Futures. Do it from the back so we hit later cached values first and avoid unecessary work in the beginning of the pipeline
 Idea: A task can be eager or lazy. If eager, we execute right away and put in cache unless
 already in cache. We can also execute it in another process (hence future)
