@@ -32,15 +32,6 @@ class TrackedPath:
         return f'TrackedPath: {self.hash}'
 
 
-def map_to_hash(val):
-    if hasattr(val, 'hash'):
-        # Futures and TrackedPaths has 'hash' attribute
-        return {'_hash': val.hash}
-    elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
-        raise NonSerializableArgError
-    return val
-
-
 class FileObjectFuture(Future):
     def __init__(self, path, flags):
         md5_hash = get_and_validate_md5_hash(path)
@@ -48,7 +39,7 @@ class FileObjectFuture(Future):
         def _get_file_object():
             return open(cache_file(md5_hash), flags)
 
-        super().__init__(_get_file_object, md5_hash)
+        super().__init__(_get_file_object, '', hash=md5_hash)
 
 
 class FileContentFuture(Future):
@@ -59,7 +50,7 @@ class FileContentFuture(Future):
             with open(cache_file(md5_hash), flags) as f:
                 return f.read()
 
-        super().__init__(_read_file, md5_hash)
+        super().__init__(_read_file, '', hash=md5_hash)
 
 
 def get_and_validate_md5_hash(path):

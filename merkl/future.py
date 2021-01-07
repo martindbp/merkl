@@ -1,5 +1,16 @@
+import json
+import hashlib
 from merkl.utils import OPERATORS, nested_map, nested_collect
 from merkl.exceptions import *
+
+
+def map_to_hash(val):
+    if hasattr(val, 'hash'):
+        # Futures and TrackedPaths has 'hash' attribute
+        return {'_hash': val.hash}
+    elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
+        raise NonSerializableArgError
+    return val
 
 
 def map_future_to_value(val):
@@ -10,35 +21,70 @@ def map_future_to_value(val):
 
 class Future:
     __slots__ = [
-        'fn', 'hash', 'num_outs', 'code_args_hash', 'output_index', 'deps',
-        'caches', 'serializer', 'bound_args', 'outs_shared_cache'
+        'fn', 'fn_code_hash', 'num_outs', 'output_index', 'deps', 'caches', 'serializer', 'bound_args',
+        'outs_shared_cache', '_hash', '_code_args_hash',
     ]
 
     def __init__(
         self,
         fn,
-        output_hash,
+        fn_code_hash,
         num_outs=1,
-        code_args_hash=None,
         output_index=None,
         deps=[],
         caches=[],
         serializer=None,
         bound_args=None,
         outs_shared_cache=None,
+        hash=None
     ):
         self.fn = fn
-        self.hash = output_hash
+        self.fn_code_hash = fn_code_hash
         self.num_outs = num_outs
-        self.code_args_hash = code_args_hash
         self.output_index = output_index
         self.deps = deps
         self.caches = caches
         self.serializer = serializer
         self.bound_args = bound_args
 
+        self._hash = hash
+        self._code_args_hash = None
+
         # Cache for the all outputs with the respect to a function and its args
         self.outs_shared_cache = outs_shared_cache or {}
+
+    @property
+    def code_args_hash(self):
+        if not self.bound_args:
+            return None
+
+        if self._code_args_hash:
+            return self._code_args_hash
+
+        # Hash args, kwargs and code together
+        hash_data = {
+            'args': nested_map(self.bound_args.args, map_to_hash, convert_tuples_to_lists=True),
+            'kwargs': nested_map(self.bound_args.kwargs, map_to_hash, convert_tuples_to_lists=True),
+            'function_name': self.fn.__name__,
+            'function_code_hash': self.fn_code_hash,
+            'function_deps': self.deps,
+        }
+        m = hashlib.sha256()
+        m.update(bytes(json.dumps(hash_data, sort_keys=True), 'utf-8'))
+        self._code_args_hash = m.hexdigest()
+        return self._code_args_hash
+
+    @property
+    def hash(self):
+        if self._hash:
+            return self._hash
+
+        m = hashlib.sha256()
+        m.update(bytes(self.code_args_hash, 'utf-8'))
+        if self.num_outs > 1:
+            m.update(bytes(str(self.output_index), 'utf-8'))
+        self._hash = m.hexdigest()
+        return self._hash
 
     def parent_futures(self):
         if not self.bound_args:
@@ -52,7 +98,7 @@ class Future:
 
     def in_cache(self):
         for cache in self.caches:
-            if cache.has(self.output_hash):
+            if cache.has(self.hash):
                 return True
 
         return False

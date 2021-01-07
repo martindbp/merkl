@@ -43,7 +43,7 @@ class TestTask(unittest.TestCase):
             pass
 
         with self.assertRaises(NonSerializableArgError):
-            embed_bert(MyClass())
+            embed_bert(MyClass()).hash
 
     def test_outs(self):
         with self.assertRaises(NonPositiveOutsError):
