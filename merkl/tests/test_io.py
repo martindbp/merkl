@@ -12,6 +12,7 @@ class TestIO(unittest.TestCase):
     tmp_file = '/tmp/merkl/tmpfile.txt'
     tmp_file2 = '/tmp/merkl/tmpfile2.txt'
     gitignore_file = '/tmp/merkl/.gitignore'
+    cwd = '/tmp/merkl/'
 
     def setUp(self):
         os.makedirs('/tmp/merkl/', exist_ok=True)
@@ -28,7 +29,7 @@ class TestIO(unittest.TestCase):
         shutil.rmtree('/tmp/merkl/')
 
     def test_tracking(self):
-        track_file(self.tmp_file, self.gitignore_file)
+        track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
         self.assertTrue(os.path.exists(self.tmp_file))
         self.assertTrue(os.path.exists(self.tmp_file + '.merkl'))
 
@@ -41,7 +42,7 @@ class TestIO(unittest.TestCase):
         _assert_gitignore()
 
         # Track same file again and make sure nothing changed
-        track_file(self.tmp_file, self.gitignore_file)
+        track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
         _assert_gitignore()
 
         with open(self.tmp_file + '.merkl') as f:
@@ -51,7 +52,7 @@ class TestIO(unittest.TestCase):
         with open(self.tmp_file, 'w') as f:
             f.write('goodbye world')
 
-        track_file(self.tmp_file, self.gitignore_file)
+        track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
 
         with open(self.tmp_file + '.merkl') as f:
             new_md5_hash = json.loads(f.read())['md5_hash']
@@ -67,20 +68,20 @@ class TestIO(unittest.TestCase):
 
     def test_file_content_future(self):
         with self.assertRaises(FileNotTrackedError):
-            FileContentFuture('non_existant_file.txt', 'r')
+            FileContentFuture('non_existant_file.txt', 'r', self.cwd)
 
-        track_file(self.tmp_file, self.gitignore_file)
-        ff = FileContentFuture(self.tmp_file, 'r')
+        track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
+        ff = FileContentFuture(self.tmp_file, 'r', self.cwd)
         self.assertEqual(ff.get(), 'hello world')
 
     def test_file_object_future(self):
-        track_file(self.tmp_file, self.gitignore_file)
-        fof = FileObjectFuture(self.tmp_file, 'r')
+        track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
+        fof = FileObjectFuture(self.tmp_file, 'r', self.cwd)
         with fof.get() as f:
             self.assertEqual(f.read(), 'hello world')
 
     def test_tracked_path(self):
-        track_file(self.tmp_file, self.gitignore_file)
+        track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
 
         @task
         def task1(path):
@@ -91,14 +92,14 @@ class TestIO(unittest.TestCase):
         out1 = task1(TrackedPath(self.tmp_file))
         with open(self.tmp_file, 'w') as f:
             f.write('goodbye world')
-        track_file(self.tmp_file, self.gitignore_file)
+        track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
         out2 = task1(TrackedPath(self.tmp_file))
 
         self.assertNotEqual(out1.hash, out2.hash)
 
     def test_tracked_paths(self):
-        track_file(self.tmp_file, self.gitignore_file)
-        track_file(self.tmp_file2, self.gitignore_file)
+        track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
+        track_file(self.tmp_file2, self.gitignore_file, cwd=self.cwd)
 
         @task
         def task1():

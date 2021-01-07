@@ -25,6 +25,8 @@ class TrackedPath:
     def get_dir_paths(cls, path):
         tracked_paths = []
         for path in pathlib.Path(path).rglob('*.merkl'):
+            if os.path.isdir(path):
+                continue
             tracked_paths.append(TrackedPath(str(path).rstrip('.merkl')))
         return tracked_paths
 
@@ -33,21 +35,21 @@ class TrackedPath:
 
 
 class FileObjectFuture(Future):
-    def __init__(self, path, flags):
+    def __init__(self, path, flags, cwd=''):
         md5_hash = get_and_validate_md5_hash(path)
 
         def _get_file_object():
-            return open(cache_file(md5_hash), flags)
+            return open(cache_file(md5_hash, cwd), flags)
 
         super().__init__(_get_file_object, '', hash=md5_hash)
 
 
 class FileContentFuture(Future):
-    def __init__(self, path, flags):
+    def __init__(self, path, flags, cwd=''):
         md5_hash = get_and_validate_md5_hash(path)
 
         def _read_file():
-            with open(cache_file(md5_hash), flags) as f:
+            with open(cache_file(md5_hash, cwd), flags) as f:
                 return f.read()
 
         super().__init__(_read_file, '', hash=md5_hash)
@@ -75,7 +77,7 @@ def get_file_modified_date(path):
     return datetime.fromtimestamp(path.stat().st_mtime)
 
 
-def track_file(file_path, gitignore_path='.gitignore'):
+def track_file(file_path, gitignore_path='.gitignore', cwd=''):
     """
     1. Hash the file
     2. Create a new file `<file>.merkl` containing the file hash and timestamp
@@ -83,7 +85,6 @@ def track_file(file_path, gitignore_path='.gitignore'):
     4. Add `<file>` to `.gitignore` if there is one
     """
     gitignore_exists = os.path.exists('.gitignore')
-    merkl_exists = os.path.exists('.merkl')
     md5_hash = get_hash_memory_optimized(file_path, mode='md5')
 
     merkl_file_path = file_path + '.merkl'
@@ -93,13 +94,13 @@ def track_file(file_path, gitignore_path='.gitignore'):
             'modified_timestamp': get_file_modified_date(file_path).isoformat(),
         }, f, sort_keys=True, indent=4)
 
-    if merkl_exists:
-        os.makedirs(cache_dir(md5_hash), exist_ok=True)
+    if not os.path.exists('{cwd}.merkl'):
+        os.makedirs(cache_dir(md5_hash, cwd), exist_ok=True)
 
-        try:
-            os.link(file_path, cache_file(md5_hash))
-        except FileExistsError:
-            pass
+    try:
+        os.link(file_path, cache_file(md5_hash, cwd))
+    except FileExistsError:
+        pass
 
     if gitignore_exists:
         with open(gitignore_path, 'r') as f:
@@ -110,9 +111,9 @@ def track_file(file_path, gitignore_path='.gitignore'):
                 f.write('\n' + file_path)
 
 
-def cache_dir(md5_hash):
-    return f'.merkl/cache/{md5_hash[:2]}'
+def cache_dir(md5_hash, cwd=''):
+    return f'{cwd}.merkl/cache/{md5_hash[:2]}'
 
 
-def cache_file(md5_hash):
-    return f'{cache_dir(md5_hash)}/{md5_hash}'
+def cache_file(md5_hash, cwd=''):
+    return f'{cache_dir(md5_hash, cwd)}/{md5_hash}'
