@@ -12,7 +12,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
         node_id = future.hash[:6]
         node_label = future.hash[:4]
         fn_hash = future.code_args_hash[:6]
-        fn_name = future.fn.__name__
+        fn_name = f'{future.fn.__name__}: {future.fn_code_hash[:4]}'
         if fn_hash not in printed:
             clamped = len(future.deps) > MAX_DEPS + 1
             deps = future.deps
