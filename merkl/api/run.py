@@ -4,7 +4,7 @@ import clize
 
 from merkl.future import Future, map_future_to_value
 from merkl.utils import nested_map, nested_collect
-from merkl.dot_graph import print_dot_graph
+from merkl.dot import print_dot_graph
 
 
 def evaluate_futures_wrapper(f):

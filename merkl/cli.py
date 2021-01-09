@@ -3,8 +3,8 @@ import sys
 import argparse
 from pathlib import Path
 
-from merkl.api_run import RunAPI
-from merkl.api_track import TrackAPI
+from merkl.api.run import RunAPI
+from merkl.api.track import TrackAPI
 
 
 class MerkLAPI:
