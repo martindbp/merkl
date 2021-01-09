@@ -23,16 +23,11 @@ def print_graph_wrapper(f):
     return _wrapper
 
 
-class RunAPI:
-    def run(self, module_function, graph):
+class DagAPI:
+    def dag(self, module_function):
         module_name, function_name = module_function.rsplit('.', 1)
 
         module = import_module(module_name)
         function = getattr(module, function_name)
-        if graph:
-            function = print_graph_wrapper(function)
-        else:
-            # Function output values may contain Futures, so wrap the function to evaluate them
-            function = evaluate_futures_wrapper(function)
-
+        function = print_graph_wrapper(function)
         clize.run(function, args=['merkl-run', *self.unknown_args])

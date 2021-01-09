@@ -1,4 +1,4 @@
-from merkl.cli import main
+from merkl import main
 
 if __name__ == '__main__':
     main()

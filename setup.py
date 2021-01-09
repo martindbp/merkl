@@ -1,5 +1,5 @@
 import re
-from setuptools import setup
+from setuptools import setup, find_packages
 
 try: # for pip >= 10
     from pip._internal.req import parse_requirements
@@ -19,7 +19,7 @@ reqs = [str(ir.requirement) for ir in install_reqs]
 
 setup(
     name="merkl",
-    packages=["merkl"],
+    packages=find_packages(),
     entry_points={"console_scripts": ['merkl = merkl:main']},
     version="0.1",
     description="MerkL",

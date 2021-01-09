@@ -3,12 +3,14 @@ import sys
 import argparse
 from pathlib import Path
 
-from merkl.api.run import RunAPI
-from merkl.api.track import TrackAPI
+from merkl.cli.run import RunAPI
+from merkl.cli.dag import DagAPI
+from merkl.cli.track import TrackAPI
 
 
 class MerkLAPI:
     run = RunAPI()
+    dag = DagAPI()
     track = TrackAPI()
 
 
@@ -37,7 +39,13 @@ def main():
         'run', description='Run a task or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
-    run_parser.add_argument('--graph', action='store_true', help='Outputs dot graph')
+
+    # ------------- DAG --------------
+    dag_parser = subparsers.add_parser(
+        'dag', description='Output the DAG of a task or pipeline as a dot file')
+    dag_parser.set_defaults(command='dag', subcommand='dag')
+    dag_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
+
 
     # ------------- TRACK ------------
     track_parser = subparsers.add_parser(
