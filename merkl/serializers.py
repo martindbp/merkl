@@ -1,8 +1,11 @@
 import pickle
 
+
 class PickleSerializer:
-    def serialize(self, value):
+    @classmethod
+    def serialize(cls, value):
         return pickle.dumps(value)
 
-    def deserializer(self, value):
-        return pickle.reads(value)
+    @classmethod
+    def deserialize(cls, value):
+        return pickle.loads(value)

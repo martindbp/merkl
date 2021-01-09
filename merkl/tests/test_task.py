@@ -4,7 +4,6 @@ from io import StringIO
 
 from merkl.tests.tasks.embed_bert import embed_bert, embed_bert_large
 from merkl.tests.tasks.embed_elmo import embed_elmo
-from merkl.tests.tasks.cluster import cluster
 from merkl.future import Future
 from merkl.task import task, HashMode
 from merkl.exceptions import *

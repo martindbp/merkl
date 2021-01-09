@@ -103,27 +103,41 @@ class Future:
 
         return False
 
+    def get_cache(self):
+        for cache in self.caches:
+            if cache.has(self.hash):
+                return self.serializer.deserialize(cache.get(self.hash))
+
     def get(self):
         if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
-            output = self.outs_shared_cache.get(self.code_args_hash)
+            outputs = self.outs_shared_cache.get(self.code_args_hash)
+        elif self.in_cache():
+            outputs = self.get_cache()
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
-            output = self.fn(*evaluated_args, **evaluated_kwargs)
+            outputs = self.fn(*evaluated_args, **evaluated_kwargs)
             if self.code_args_hash:
-                self.outs_shared_cache[self.code_args_hash] = output
+                self.outs_shared_cache[self.code_args_hash] = outputs
 
-        out = output
-        if self.output_index is not None:
-            out = output[self.output_index]
-
-        if isinstance(output, tuple) and len(output) != self.num_outs:
+        if isinstance(outputs, tuple) and len(outputs) != self.num_outs:
             raise WrongNumberOfOutsError
 
-        for cache in self.caches:
-            cache.put(out, self.hash)
+        specific_out = outputs
+        if self.output_index is not None:
+            specific_out = outputs[self.output_index]
 
-        return out
+        if len(self.caches) > 0:
+            specific_out_bytes = self.serializer.serialize(specific_out)
+            m = hashlib.sha256()
+            m.update(specific_out_bytes)
+            content_hash = m.hexdigest()
+
+        for cache in self.caches:
+            if not cache.has(self.hash):
+                cache.add(content_hash, self.hash, specific_out_bytes)
+
+        return specific_out
 
     def __repr__(self):
         return f'<Future: {self.hash[:8]}>'
