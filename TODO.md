@@ -1,7 +1,5 @@
 Allow Dict outs
 
-Visualize deps for the first instance of a function call
-
 Add a FileObjectWriteFuture (and rename FileObjectFuture -> FileObjectReadFuture?) which is returned when doing:
     @task
     def task1():

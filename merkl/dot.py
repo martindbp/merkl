@@ -44,8 +44,9 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
 
             args_str = args_str.strip()
 
-            print(f'\t"fn_{code_args_hash}_args" [shape=box, label="{args_str}"];')
-            print(f'\t"fn_{code_args_hash}_args" -> "fn_{code_args_hash}";')
+            if args_str:
+                print(f'\t"fn_{code_args_hash}_args" [shape=box, label="{args_str}"];')
+                print(f'\t"fn_{code_args_hash}_args" -> "fn_{code_args_hash}";')
 
         if node_id not in printed:
             color = 'green' if future.in_cache() else 'red'
