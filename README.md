@@ -1,7 +1,78 @@
-# MerkL - track ML data, models and create cached pipelines
+# MerkL - create ML pipelines with deep caching and tracking of datasets and models
 
-MerkL is a tool for tracking large data (data sets, models) in git, and creating ML pipelines in pure Python code with
-cachable intermediate and final results, suitable both for development and production.
+MerkL is a tool for creating cachable ML pipelines in pure Python that are good for development and easy to deploy to production. MerkL also provides a CLI to track and store data sets and trained models.
+
+## How does it work?
+
+In MerkL, pipelines are built out of functions decorated with the `task` decorator. When a task is called, the function
+body is not exectuted immediately, but instead `Future` objects are returned in place of real outputs. These can then be passed on
+to other tasks:
+
+```python
+from merkl import task
+
+@task
+def my_task(input_value):
+    return 2 * input_value
+
+@task
+def my_next_task(input_value):
+    return input_value ** 2
+
+val = my_task(3)
+print(val)
+print(val.get())
+
+final_val = my_next_task(val)
+print(final_val)
+print(final_val.get())
+```
+Prints:
+```
+<Future: 00d15272>
+6
+<Future: 5aa21788>
+36
+```
+
+No function body is ever executed before `.get()` is called on a Future. Instead a graph is built and each Future is
+assigned a hash that uniquely identifies the output value. If the code or input values change, then the
+output Future hashes also change. These hashes are then used to find cached results.
+
+```python
+def my_pipeline():
+    val = my_task(3)
+    return my_next_task(val)
+```
+We can visualize the graph using the `merkl dot` command which outputs the DAG in the dot file format:
+
+`merkl dot test.my_pipeline | dot -Tpng | display`
+
+![](docs/graph.png)
+
+Note: rendering an image and displaying it using this command requires graphviz and imagemagick to be installed
+
+To run the code and produce the output value, use the `run` subcommand:
+
+```
+$ merkl run test.my_pipeline
+36
+```
+
+Arguments can be passed to the pipeline like this:
+
+```python
+def my_pipeline(input_value):
+    val = my_task(input_value)
+    return my_next_task(val)
+```
+
+```
+$ merkl run test.my_pipeline 3
+36
+```
+
+See [clize](https://clize.readthedocs.io/en/stable/) for more information on how to pass parameters from the command line.
 
 ## What problems does MerkL solve?
 

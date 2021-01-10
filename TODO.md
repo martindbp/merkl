@@ -1,3 +1,15 @@
+To return execution order, yield it in pipeline function while returning the final value, e.g. This way we could yield
+execution order multiple times, if we have .get() calls
+
+Use execution order when calling `merkl run`. Provide `--target [N/<name>]` parameter, where N is number of cores if on
+local machine, and <name> could be AWS or something.
+
+Use cloudpickle as default serializer
+
+Use cloudpickle to hash functions and deps
+
+Have the serialization interface be the same as for pickle and json (dump(s), load(s))
+
 Allow Dict outs
 
 Add a FileObjectWriteFuture (and rename FileObjectFuture -> FileObjectReadFuture?) which is returned when doing:
@@ -23,8 +35,6 @@ Have a cache backend that dedupes using content hash.
     Two types of backends: just merkle hashes, or merkle + content hashes
     When passing along fileobjects, to a streaming hash of the content while writing to file. Can stream bytes into hashlib
     Implement SQLite backend, good for small values and links
-
-Provide a `merkl.collect(*futures)` function that returns a list of independent tasks or branches that can be executed
 
 Make sure functions are executed in the same order as the code
 
