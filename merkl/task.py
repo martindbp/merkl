@@ -1,9 +1,9 @@
 import hashlib
 import textwrap
+import cloudpickle
 from enum import Enum
 from functools import wraps, lru_cache
 from inspect import signature, getsource, isfunction, ismodule, getmodule
-from merkl.serializers import PickleSerializer
 from merkl.utils import doublewrap, nested_map, get_function_return_type_length
 from merkl.future import Future
 from merkl.io import TrackedPath
@@ -83,7 +83,7 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=[], caches=[], serializ
         outs_shared_cache = {}
         for i in range(resolved_outs):
             if serializer is None:
-                out_serializer = PickleSerializer
+                out_serializer = cloudpickle
             elif isinstance(serializer, dict):
                 out_serializer = serializer[i]
 

@@ -1,14 +1,13 @@
+Add ability to serialize/deserialize straight to fileobject
+    Cache needs to have a get_fileobject and add_fileobject
+
 To return execution order, yield it in pipeline function while returning the final value, e.g. This way we could yield
 execution order multiple times, if we have .get() calls
 
 Use execution order when calling `merkl run`. Provide `--target [N/<name>]` parameter, where N is number of cores if on
 local machine, and <name> could be AWS or something.
 
-Use cloudpickle as default serializer
-
 Use cloudpickle to hash functions and deps
-
-Have the serialization interface be the same as for pickle and json (dump(s), load(s))
 
 Allow Dict outs
 

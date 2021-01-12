@@ -106,7 +106,7 @@ class Future:
     def get_cache(self):
         for cache in self.caches:
             if cache.has(self.hash):
-                return self.serializer.deserialize(cache.get(self.hash))
+                return self.serializer.loads(cache.get(self.hash))
 
     def get(self):
         if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
@@ -128,7 +128,7 @@ class Future:
             specific_out = outputs[self.output_index]
 
         if len(self.caches) > 0:
-            specific_out_bytes = self.serializer.serialize(specific_out)
+            specific_out_bytes = self.serializer.dumps(specific_out)
             m = hashlib.sha256()
             m.update(specific_out_bytes)
             content_hash = m.hexdigest()
