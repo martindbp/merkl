@@ -5,6 +5,7 @@ from datetime import datetime
 from merkl.future import Future
 from merkl.exceptions import FileNotTrackedError, NonSerializableArgError, TrackedFileNotUpToDateError
 from merkl.utils import get_hash_memory_optimized
+from merkl.cache import cache_file_path, cache_dir_path
 
 
 class TrackedPath:
@@ -39,7 +40,7 @@ class FileObjectFuture(Future):
         md5_hash = get_and_validate_md5_hash(path)
 
         def _get_file_object():
-            return open(cache_file(md5_hash, cwd), flags)
+            return open(cache_file_path(md5_hash, cwd), flags)
 
         super().__init__(_get_file_object, '', hash=md5_hash)
 
@@ -49,7 +50,7 @@ class FileContentFuture(Future):
         md5_hash = get_and_validate_md5_hash(path)
 
         def _read_file():
-            with open(cache_file(md5_hash, cwd), flags) as f:
+            with open(cache_file_path(md5_hash, cwd), flags) as f:
                 return f.read()
 
         super().__init__(_read_file, '', hash=md5_hash)
@@ -95,10 +96,10 @@ def track_file(file_path, gitignore_path='.gitignore', cwd=''):
         }, f, sort_keys=True, indent=4)
 
     if not os.path.exists('{cwd}.merkl'):
-        os.makedirs(cache_dir(md5_hash, cwd), exist_ok=True)
+        os.makedirs(cache_dir_path(md5_hash, cwd), exist_ok=True)
 
     try:
-        os.link(file_path, cache_file(md5_hash, cwd))
+        os.link(file_path, cache_file_path(md5_hash, cwd))
     except FileExistsError:
         pass
 
@@ -109,11 +110,3 @@ def track_file(file_path, gitignore_path='.gitignore', cwd=''):
         if file_path not in lines:
             with open(gitignore_path, 'a') as f:
                 f.write('\n' + file_path)
-
-
-def cache_dir(md5_hash, cwd=''):
-    return f'{cwd}.merkl/cache/{md5_hash[:2]}'
-
-
-def cache_file(md5_hash, cwd=''):
-    return f'{cache_dir(md5_hash, cwd)}/{md5_hash}'

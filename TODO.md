@@ -1,3 +1,5 @@
+Copy file when tracking rather than hard link, since we don't have copy on write
+
 Add ability to serialize/deserialize straight to fileobject
     Cache needs to have a get_fileobject and add_fileobject
 
@@ -6,8 +8,6 @@ execution order multiple times, if we have .get() calls
 
 Use execution order when calling `merkl run`. Provide `--target [N/<name>]` parameter, where N is number of cores if on
 local machine, and <name> could be AWS or something.
-
-Use cloudpickle to hash functions and deps
 
 Allow Dict outs
 

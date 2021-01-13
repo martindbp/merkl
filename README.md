@@ -12,18 +12,18 @@ to other tasks:
 from merkl import task
 
 @task
-def my_task(input_value):
+def task1(input_value):
     return 2 * input_value
 
 @task
-def my_next_task(input_value):
+def task2(input_value):
     return input_value ** 2
 
-val = my_task(3)
+val = task1(3)
 print(val)
 print(val.get())
 
-final_val = my_next_task(val)
+final_val = task2(val)
 print(final_val)
 print(final_val.get())
 ```
@@ -35,20 +35,20 @@ Prints:
 36
 ```
 
-No function body is ever executed before `.get()` is called on a Future. Instead a graph is built and each Future is
-assigned a hash that uniquely identifies the output value. If the code or input values change, then the
+No function body is executed before `.get()` is called on a Future. Instead a graph is built and each Future is
+assigned a hash that uniquely identifies its future value. If the code or input values change, then the
 output Future hashes also change. These hashes are then used to find cached results.
 
 ```python
 def my_pipeline():
-    val = my_task(3)
-    return my_next_task(val)
+    val = task1(3)
+    return task2(val)
 ```
 We can visualize the graph using the `merkl dot` command which outputs the DAG in the dot file format:
 
 `merkl dot test.my_pipeline | dot -Tpng | display`
 
-![](docs/graph.png)
+![](docs/pipeline1.png)
 
 Note: rendering an image and displaying it using this command requires graphviz and imagemagick to be installed
 
@@ -63,14 +63,25 @@ Arguments can be passed to the pipeline like this:
 
 ```python
 def my_pipeline(input_value):
-    val = my_task(input_value)
-    return my_next_task(val)
+    val = task1(input_value)
+    return task2(val)
 ```
 
 ```
 $ merkl run test.my_pipeline 3
 36
 ```
+
+To set a default cache for all Future values, the `--cache file` option can be supplied:
+
+`$ merkl run --cache file test.my_pipeline 3`
+
+Now, when running rendering the DAG, cached values are highlighted in green:
+
+`$ merkl dot --cache file test.my_pipeline 3 | dot -Tpng | display`
+
+![](docs/pipeline2.png)
+
 
 See [clize](https://clize.readthedocs.io/en/stable/) for more information on how to pass parameters from the command line.
 

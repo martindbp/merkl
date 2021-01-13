@@ -5,21 +5,24 @@ import clize
 from merkl.future import Future, map_future_to_value
 from merkl.utils import nested_map, nested_collect
 from merkl.dot import print_dot_graph
+from merkl.cache import CacheOverride, get_cache_from_arg
 
 
-def evaluate_futures_wrapper(f):
+def evaluate_futures_wrapper(f, cache):
     @functools.wraps(f)
     def _wrapper(*args, **kwargs):
-        return nested_map(f(*args, **kwargs), map_future_to_value)
+        with CacheOverride(cache):
+            return nested_map(f(*args, **kwargs), map_future_to_value)
     return _wrapper
 
 
 class RunAPI:
-    def run(self, module_function):
+    def run(self, module_function, cache):
         module_name, function_name = module_function.rsplit('.', 1)
 
         module = import_module(module_name)
+        cache = get_cache_from_arg(cache)
         function = getattr(module, function_name)
         # Function output values may contain Futures, so wrap the function to evaluate them
-        function = evaluate_futures_wrapper(function)
+        function = evaluate_futures_wrapper(function, cache)
         clize.run(function, args=['merkl-run', *self.unknown_args])

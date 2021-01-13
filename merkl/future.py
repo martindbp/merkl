@@ -1,5 +1,6 @@
 import json
 import hashlib
+import merkl.cache
 from merkl.utils import OPERATORS, nested_map, nested_collect
 from merkl.exceptions import *
 
@@ -21,7 +22,7 @@ def map_future_to_value(val):
 
 class Future:
     __slots__ = [
-        'fn', 'fn_code_hash', 'num_outs', 'output_index', 'deps', 'caches', 'serializer', 'bound_args',
+        'fn', 'fn_code_hash', 'num_outs', 'output_index', 'deps', '_caches', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash',
     ]
 
@@ -43,7 +44,7 @@ class Future:
         self.num_outs = num_outs
         self.output_index = output_index
         self.deps = deps
-        self.caches = caches
+        self._caches = caches
         self.serializer = serializer
         self.bound_args = bound_args
 
@@ -52,6 +53,12 @@ class Future:
 
         # Cache for the all outputs with the respect to a function and its args
         self.outs_shared_cache = outs_shared_cache or {}
+
+    @property
+    def caches(self):
+        if merkl.cache.cache_override != 0:
+            return [merkl.cache.cache_override]
+        return self._caches
 
     @property
     def code_args_hash(self):
