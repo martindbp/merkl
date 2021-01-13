@@ -4,13 +4,13 @@ import argparse
 from pathlib import Path
 
 from merkl.cli.run import RunAPI
-from merkl.cli.dot import DagAPI
+from merkl.cli.dot import DotAPI
 from merkl.cli.track import TrackAPI
 
 
 class MerkLAPI:
     run = RunAPI()
-    dot = DagAPI()
+    dot = DotAPI()
     track = TrackAPI()
 
 
@@ -44,6 +44,7 @@ def main():
     dot_parser = subparsers.add_parser(
         'dot', description='Output the DAG of a task or pipeline as a dot file')
     dot_parser.set_defaults(command='dot', subcommand='dot')
+    dot_parser.add_argument('--rankdir', choices=['TB', 'LR'], help='Value for the rankdir dot graph parameter')
     dot_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
 
 

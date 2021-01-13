@@ -60,9 +60,11 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
         print_dot_graph_nodes(future.parent_futures(), code_args_hash, printed)
 
 
-def print_dot_graph(futures):
+def print_dot_graph(futures, rankdir=None):
     printed = set()
     print('digraph D {')
-    print('\t node [shape=plaintext];')
+    if rankdir is not None:
+        print(f'\trankdir="{rankdir}";')
+    print('\tnode [shape=plaintext];')
     print_dot_graph_nodes(futures, printed=printed)
     print('}')
