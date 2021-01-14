@@ -1,8 +1,10 @@
 # MerkL - create ML pipelines with deep caching and tracking of datasets and models
 
-MerkL is a tool for creating cachable ML pipelines in pure Python that are good for development and easy to deploy to production. MerkL also provides a CLI to track and store data sets and trained models.
+MerkL is a tool for creating cachable ML pipelines in pure Python that are useful for development and experimentation,
+but also easy to deploy to production. MerkL also provides a CLI to track and store data sets and trained models. The
+concept is very similar to [DVC](http://dvc.org) but with a bigger focus on pipelines and deployment.
 
-## How does it work?
+## Whirlwind tour
 
 In MerkL, pipelines are built out of functions decorated with the `task` decorator. When a task is called, the function
 body is not exectuted immediately, but instead `Future` objects are returned in place of real outputs. These can then be passed on
@@ -29,9 +31,9 @@ print(final_val.get())
 ```
 Prints:
 ```
-<Future: 00d15272>
+<Future: 291b4697>
 6
-<Future: 5aa21788>
+<Future: 51417ab7>
 36
 ```
 
@@ -46,7 +48,7 @@ def my_pipeline():
 ```
 We can visualize the graph using the `merkl dot` command which outputs the DAG in the dot file format:
 
-`merkl dot test.my_pipeline | dot -Tpng | display`
+`$ merkl dot test.my_pipeline | dot -Tpng | display`
 
 ![](docs/pipeline1.png)
 
@@ -62,7 +64,7 @@ $ merkl run test.my_pipeline
 Arguments can be passed to the pipeline like this:
 
 ```python
-def my_pipeline(input_value):
+def my_pipeline(input_value: int):
     val = task1(input_value)
     return task2(val)
 ```
@@ -71,6 +73,8 @@ def my_pipeline(input_value):
 $ merkl run test.my_pipeline 3
 36
 ```
+
+See [clize](https://clize.readthedocs.io/en/stable/) for more information on how to pass parameters from the command line.
 
 To set a default cache for all Future values, the `--cache file` option can be supplied:
 
@@ -82,8 +86,28 @@ Now, when running rendering the DAG, cached values are highlighted in green:
 
 ![](docs/pipeline2.png)
 
+Let's say we change the `2` to a `3` in `task2` and rerun the command. Now the second future hash is different, and can't be found in the cache (hence the red font):
 
-See [clize](https://clize.readthedocs.io/en/stable/) for more information on how to pass parameters from the command line.
+![](docs/pipeline3.png)
+
+You can also specify the type of cache to use in the `task` decorator:
+
+```python
+from merkl import task, FileCache
+
+@task(caches=[FileCache])
+def task1(input_value):
+    return 2 * input_value
+```
+
+Let's say we want to do some file IO. MerkL provides a command to "import" a file such that it can be used in MerkL
+pipelines:
+
+`$ merkl track my_file.csv`
+
+This hashes the file creates a `my_file.csv.merkl` JSON file containing the hash, while copying the original file to the
+file cache at `.merkl/cache`. If a `.gitignore` file is present, the file is also added to it. This way
+
 
 ## What problems does MerkL solve?
 

@@ -1,3 +1,5 @@
+Add FilePath class, next to TrackedFilePath, which instead of reading a tracked file just hashes the content
+
 Copy file when tracking rather than hard link, since we don't have copy on write
 
 Add ability to serialize/deserialize straight to fileobject

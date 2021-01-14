@@ -45,13 +45,13 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             args_str = args_str.strip()
 
             if args_str:
-                print(f'\t"fn_{code_args_hash}_args" [shape=box, label="{args_str}"];')
+                print(f'\t"fn_{code_args_hash}_args" [shape=parallelogram, label="{args_str}"];')
                 print(f'\t"fn_{code_args_hash}_args" -> "fn_{code_args_hash}";')
 
         if node_id not in printed:
             color = 'green' if future.in_cache() else 'red'
             label = f"< <font color='{color}'>{node_label}</font> >"
-            print(f'\t"out_{node_id}" [shape=box, style=dotted, label={label}];')
+            print(f'\t"out_{node_id}" [shape=parallelogram, style=dotted, label={label}];')
             print(f'\t"fn_{code_args_hash}" -> "out_{node_id}"')
             printed.add(node_id)
             if target_fn:

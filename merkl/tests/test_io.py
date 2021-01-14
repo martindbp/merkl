@@ -80,6 +80,9 @@ class TestIO(unittest.TestCase):
         with fof.get() as f:
             self.assertEqual(f.read(), 'hello world')
 
+    def test_path(self):
+        self.assertNotEqual(FilePath(self.tmp_file).hash, FilePath(self.tmp_file2).hash)
+
     def test_tracked_path(self):
         track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
 
@@ -89,11 +92,11 @@ class TestIO(unittest.TestCase):
             return 1
 
         # Check that hash changes if we update the file content
-        out1 = task1(TrackedPath(self.tmp_file))
+        out1 = task1(TrackedFilePath(self.tmp_file))
         with open(self.tmp_file, 'w') as f:
             f.write('goodbye world')
         track_file(self.tmp_file, self.gitignore_file, cwd=self.cwd)
-        out2 = task1(TrackedPath(self.tmp_file))
+        out2 = task1(TrackedFilePath(self.tmp_file))
 
         self.assertNotEqual(out1.hash, out2.hash)
 
@@ -105,11 +108,11 @@ class TestIO(unittest.TestCase):
         def task1():
             return 1
 
-        @task(deps=[TrackedPath(self.tmp_file)])
+        @task(deps=[TrackedFilePath(self.tmp_file)])
         def task2():
             return 1
 
-        tracked_paths = TrackedPath.get_dir_paths('/tmp/merkl/')
+        tracked_paths = TrackedFilePath.get_dir_paths('/tmp/merkl/')
         self.assertEqual(len(tracked_paths), 2)
 
         @task(deps=tracked_paths)

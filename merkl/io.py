@@ -8,7 +8,7 @@ from merkl.utils import get_hash_memory_optimized
 from merkl.cache import cache_file_path, cache_dir_path
 
 
-class TrackedPath:
+class TrackedFilePath:
     """ Class to indicate that path refers to a merkl-tracked file, and hash should be used instead of path string as
     dependency """
     __slots__ = ['path', 'hash']
@@ -28,11 +28,32 @@ class TrackedPath:
         for path in pathlib.Path(path).rglob('*.merkl'):
             if os.path.isdir(path):
                 continue
-            tracked_paths.append(TrackedPath(str(path).rstrip('.merkl')))
+            tracked_paths.append(TrackedFilePath(str(path).rstrip('.merkl')))
         return tracked_paths
 
     def __repr__(self):
-        return f'TrackedPath: {self.hash}'
+        return f'<TrackedFilePath: {self.hash}>'
+
+
+class FilePath:
+    """ Class to indicate that path file whose hash should be used instead of path string as dependency """
+    __slots__ = ['path', 'hash']
+
+    def __init__(self, path):
+        self.path = path
+        self.hash = get_hash_memory_optimized(path, mode='md5')
+
+    @classmethod
+    def get_dir_paths(cls, path, pattern='*'):
+        paths = []
+        for path in pathlib.Path(path).glob(pattern):
+            if os.path.isdir(path):
+                continue
+            paths.append(FilePath(str(path)))
+        return paths
+
+    def __repr__(self):
+        return f'<Path: {self.hash}>'
 
 
 class FileObjectFuture(Future):
