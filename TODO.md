@@ -1,3 +1,6 @@
+Add capability to store result metadata in the cache
+    Cache backend gets meta data as well, decides if and how to store it
+
 Add FilePath class, next to TrackedFilePath, which instead of reading a tracked file just hashes the content
 
 Copy file when tracking rather than hard link, since we don't have copy on write

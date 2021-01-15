@@ -50,7 +50,7 @@ We can visualize the graph using the `merkl dot` command which outputs the DAG i
 
 `$ merkl dot test.my_pipeline | dot -Tpng | display`
 
-![](docs/pipeline1.png)
+![](docs/examples/pipeline1.png)
 
 Note: rendering an image and displaying it using this command requires graphviz and imagemagick to be installed
 
@@ -84,11 +84,11 @@ Now, when running rendering the DAG, cached values are highlighted in green:
 
 `$ merkl dot --cache file test.my_pipeline 3 | dot -Tpng | display`
 
-![](docs/pipeline2.png)
+![](docs/examples/pipeline2.png)
 
 Let's say we change the `2` to a `3` in `task2` and rerun the command. Now the second future hash is different, and can't be found in the cache (hence the red font):
 
-![](docs/pipeline3.png)
+![](docs/examples/pipeline3.png)
 
 You can also specify the type of cache to use in the `task` decorator:
 
