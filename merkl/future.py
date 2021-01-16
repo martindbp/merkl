@@ -26,7 +26,7 @@ def map_future_to_value(val):
 class Future:
     __slots__ = [
         'fn', 'fn_code_hash', 'num_outs', 'output_index', 'deps', '_caches', 'serializer', 'bound_args',
-        'outs_shared_cache', '_hash', '_code_args_hash', 'meta'
+        'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_io'
     ]
 
     def __init__(
@@ -40,7 +40,8 @@ class Future:
         serializer=None,
         bound_args=None,
         outs_shared_cache=None,
-        hash=None
+        hash=None,
+        meta=None,
     ):
         self.fn = fn
         self.fn_code_hash = fn_code_hash
@@ -56,12 +57,12 @@ class Future:
 
         # Cache for the all outputs with the respect to a function and its args
         self.outs_shared_cache = outs_shared_cache or {}
-
-        self.meta = None
+        self.meta = meta
+        self.is_io = self.fn_code_hash is None
 
     @property
     def caches(self):
-        if merkl.cache.cache_override != 0:
+        if not self.is_io and merkl.cache.cache_override != 0:
             return [merkl.cache.cache_override]
         return self._caches
 
@@ -118,7 +119,10 @@ class Future:
     def get_cache(self):
         for cache in self.caches:
             if cache.has(self.hash):
-                return self.serializer.loads(cache.get(self.hash))
+                val = cache.get(self.hash)
+                if self.is_io:
+                    return val
+                return self.serializer.loads(val)
 
     def get(self):
         if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
@@ -139,15 +143,16 @@ class Future:
         if self.output_index is not None:
             specific_out = outputs[self.output_index]
 
-        if len(self.caches) > 0:
-            specific_out_bytes = self.serializer.dumps(specific_out)
-            m = hashlib.sha256()
-            m.update(specific_out_bytes)
-            content_hash = m.hexdigest()
+        if not self.is_io:
+            if len(self.caches) > 0:
+                specific_out_bytes = self.serializer.dumps(specific_out)
+                m = hashlib.sha256()
+                m.update(specific_out_bytes)
+                content_hash = m.hexdigest()
 
-        for cache in self.caches:
-            if not cache.has(self.hash):
-                cache.add(content_hash, self.hash, specific_out_bytes)
+            for cache in self.caches:
+                if not cache.has(self.hash):
+                    cache.add(content_hash, self.hash, specific_out_bytes)
 
         return specific_out
 

@@ -93,7 +93,11 @@ Let's say we change the `2` to a `3` in `task2` and re-run the command. Now the 
 What would a slightly more realistic scenario look like? Here's a pipeline for a non-descript model training and
 evaluation:
 
-```
+```python
+from merkl import mread
+
+...
+
 def train_eval():
     train_data = mread('train.csv')
     test_data = mread('test.csv')
@@ -108,7 +112,8 @@ first add them to MerkL using the `track` command:
 `$ merkl track train.csv test.csv`
 
 This moves a copy to the `.merkl/cache` folder, creates a `{train,test}.csv.merkl` file containing the content hash, and
-adds the original file to `.gitignore` if present.
+adds the original file to `.gitignore` if present. In git, we'll track the `.merkl` file instead of the original, which
+we instead upload to remote storage like AWS S3.
 
 If we visualize this graph it looks like this:
 

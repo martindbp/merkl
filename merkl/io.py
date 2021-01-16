@@ -1,6 +1,7 @@
 import os
 import pathlib
 import json
+from functools import partial
 from datetime import datetime
 from merkl.future import Future
 from merkl.exceptions import FileNotTrackedError, NonSerializableArgError, TrackedFileNotUpToDateError
@@ -69,19 +70,17 @@ def _get_file_content(md5_hash, flags):
 
 
 def mread(path, flags=''):
-    from merkl.task import task
+    from merkl.task import task  # FIX: circular imports
     md5_hash = get_and_validate_md5_hash(path)
-    future = task(_get_file_content)(md5_hash, flags)
-    future.meta = path
-    return future
+    f = partial(_get_file_content, md5_hash=md5_hash, flags=flags)
+    return Future(f, None, caches=[FileCache], hash=md5_hash, meta=path)
 
 
 def mopen(path, flags=''):
     from merkl.task import task
     md5_hash = get_and_validate_md5_hash(path)
-    future = task(_get_file_object)(md5_hash, flags)
-    future.meta = path
-    return future
+    f = partial(_get_file_object, md5_hash=md5_hash, flags=flags)
+    return Future(f, None, caches=[FileCache], hash=md5_hash, meta=path)
 
 
 def get_and_validate_md5_hash(path):
