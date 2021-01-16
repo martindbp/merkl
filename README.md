@@ -90,23 +90,29 @@ Let's say we change the `2` to a `3` in `task2` and re-run the command. Now the 
 
 ![](docs/examples/pipeline3.png)
 
-You can also specify the type of cache to use in the `task` decorator:
+What would a slightly more realistic scenario look like? Here's a pipeline for a non-descript model training and
+evaluation:
 
-```python
-from merkl import task, FileCache
-
-@task(caches=[FileCache])
-def task1(input_value):
-    return 2 * input_value
+```
+def train_eval():
+    train_data = mread('train.csv')
+    test_data = mread('test.csv')
+    model = train(train_data, iterations=100)
+    score = evaluate(model, test_data)
+    return model, score
 ```
 
-Let's say we want to do some file IO. MerkL provides a command to "import" a file such that it can be used in MerkL
-pipelines:
+This pipeline assumes that `{train,test}.csv` are large files that we don't want to track in version control. So we
+first add them to MerkL using the `track` command:
 
-`$ merkl track my_file.csv`
+`$ merkl track train.csv test.csv`
 
-This hashes the file creates a `my_file.csv.merkl` JSON file containing the hash, while copying the original file to the
-file cache at `.merkl/cache`. If a `.gitignore` file is present, the file is also added to it. This way
+This moves a copy to the `.merkl/cache` folder, creates a `{train,test}.csv.merkl` file containing the content hash, and
+adds the original file to `.gitignore` if present.
+
+If we visualize this graph it looks like this:
+
+![](docs/examples/pipeline4.png)
 
 
 ## What problems does MerkL solve?
