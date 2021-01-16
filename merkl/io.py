@@ -5,7 +5,10 @@ from datetime import datetime
 from merkl.future import Future
 from merkl.exceptions import FileNotTrackedError, NonSerializableArgError, TrackedFileNotUpToDateError
 from merkl.utils import get_hash_memory_optimized
-from merkl.cache import cache_file_path, cache_dir_path
+from merkl.cache import cache_file_path, cache_dir_path, FileCache
+
+
+cwd = ''
 
 
 class TrackedFilePath:
@@ -56,25 +59,29 @@ class FilePath:
         return f'<Path: {self.hash}>'
 
 
-class FileObjectFuture(Future):
-    def __init__(self, path, flags, cwd=''):
-        md5_hash = get_and_validate_md5_hash(path)
-
-        def _get_file_object():
-            return open(cache_file_path(md5_hash, cwd), flags)
-
-        super().__init__(_get_file_object, '', hash=md5_hash)
+def _get_file_object(md5_hash, flags):
+    return open(cache_file_path(md5_hash, cwd), flags)
 
 
-class FileContentFuture(Future):
-    def __init__(self, path, flags, cwd=''):
-        md5_hash = get_and_validate_md5_hash(path)
+def _get_file_content(md5_hash, flags):
+    with open(cache_file_path(md5_hash, cwd), flags) as f:
+        return f.read()
 
-        def _read_file():
-            with open(cache_file_path(md5_hash, cwd), flags) as f:
-                return f.read()
 
-        super().__init__(_read_file, '', hash=md5_hash)
+def mread(path, flags=''):
+    from merkl.task import task
+    md5_hash = get_and_validate_md5_hash(path)
+    future = task(_get_file_content)(md5_hash, flags)
+    future.meta = path
+    return future
+
+
+def mopen(path, flags=''):
+    from merkl.task import task
+    md5_hash = get_and_validate_md5_hash(path)
+    future = task(_get_file_object)(md5_hash, flags)
+    future.meta = path
+    return future
 
 
 def get_and_validate_md5_hash(path):
@@ -99,7 +106,7 @@ def get_file_modified_date(path):
     return datetime.fromtimestamp(path.stat().st_mtime)
 
 
-def track_file(file_path, gitignore_path='.gitignore', cwd=''):
+def track_file(file_path, gitignore_path='.gitignore'):
     """
     1. Hash the file
     2. Create a new file `<file>.merkl` containing the file hash and timestamp

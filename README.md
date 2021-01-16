@@ -86,7 +86,7 @@ Now, when running rendering the DAG, cached values are highlighted in green:
 
 ![](docs/examples/pipeline2.png)
 
-Let's say we change the `2` to a `3` in `task2` and rerun the command. Now the second future hash is different, and can't be found in the cache (hence the red font):
+Let's say we change the `2` to a `3` in `task2` and re-run the command. Now the second future hash is different, and can't be found in the cache:
 
 ![](docs/examples/pipeline3.png)
 

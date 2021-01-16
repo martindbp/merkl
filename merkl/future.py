@@ -26,7 +26,7 @@ def map_future_to_value(val):
 class Future:
     __slots__ = [
         'fn', 'fn_code_hash', 'num_outs', 'output_index', 'deps', '_caches', 'serializer', 'bound_args',
-        'outs_shared_cache', '_hash', '_code_args_hash',
+        'outs_shared_cache', '_hash', '_code_args_hash', 'meta'
     ]
 
     def __init__(
@@ -56,6 +56,8 @@ class Future:
 
         # Cache for the all outputs with the respect to a function and its args
         self.outs_shared_cache = outs_shared_cache or {}
+
+        self.meta = None
 
     @property
     def caches(self):

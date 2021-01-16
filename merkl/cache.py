@@ -6,7 +6,7 @@ cache_override = 0  # 0 means no cache override
 IN_MEMORY_CACHE = {}
 
 def cache_dir_path(hash, cwd=''):
-    return f'{cwd}.merkl/cache/{hash[:2]}/{hash}'
+    return f'{cwd}.merkl/cache/{hash[:2]}'
 
 
 def cache_file_path(hash, cwd=''):
@@ -31,11 +31,13 @@ class CacheOverride:
 
     def __enter__(self, *args, **kwargs):
         global cache_override
-        cache_override = self.cache
+        if self.cache is not None:
+            cache_override = self.cache
 
     def __exit__(self, *args, **kwargs):
         global cache_override
-        cache_override = None
+        if self.cache is not None:
+            cache_override = 0
 
 
 class InMemoryCache:
