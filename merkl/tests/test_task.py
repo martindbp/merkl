@@ -126,7 +126,7 @@ class TestTask(unittest.TestCase):
             return input_value, 3
 
         with self.assertRaises(WrongNumberOfOutsError):
-            _task5('test').get()
+            _task5('test').eval()
 
     def test_pipelines(self):
         @task(outs=lambda input_values: len(input_values))
@@ -141,7 +141,7 @@ class TestTask(unittest.TestCase):
         vals = [1, 1, 1, 4, 5, 6]
         outs_stage1 = _task1(vals)
         outs_stage2 = [_task2(val) for val in outs_stage1]
-        self.assertEqual([out.get() for out in outs_stage2], vals)
+        self.assertEqual([out.eval() for out in outs_stage2], vals)
 
         # Test that all hashes are different
         self.assertEqual(len(set(out.hash for out in outs_stage2)), len(vals))

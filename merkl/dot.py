@@ -12,6 +12,8 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
     # NOTE: This is confusing code, but probably not worth spending time on...
     for future in futures:
         node_id = future.hash[:6]
+        if future.is_output:
+            node_id = f'{node_id}-{future.meta}'
         node_label = future.hash[:4]
         code_args_hash = future.code_args_hash[:6] if future.code_args_hash else None
         if not future.is_io and code_args_hash not in printed:
@@ -54,9 +56,10 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
 
         if node_id not in printed:
             color = 'green' if future.in_cache() else 'red'
+#            if future.is_output:
+#                breakpoint()
             if future.is_io:
-                # NOTE: in this case we store the file path in meta. We use the md5_hash input arg as the hash for
-                # display, i.e the hash of the file
+                # NOTE: in this case we store the file path in meta
                 node_label = f'{future.meta}<br/>{future.hash[:4]}'
                 shape = 'cylinder'
             else:
@@ -67,6 +70,9 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             print(f'\t"out_{node_id}" [shape={shape}, style=dashed, label={label}];')
             if not future.is_io:
                 print(f'\t"fn_{code_args_hash}" -> "out_{node_id}"')
+            if future.is_output:
+                print(f'\t"out_{future.hash[:6]}" -> "out_{node_id}"')
+
             printed.add(node_id)
 
         edge_name = f'{node_id}-{target_fn}'

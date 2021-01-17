@@ -10,8 +10,8 @@ def task2(input_value):
 
 val = task1(3)
 print(val)
-print(val.get())
+print(val.eval())
 
 final_val = task2(val)
 print(final_val)
-print(final_val.get())
+print(final_val.eval())

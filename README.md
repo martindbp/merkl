@@ -23,11 +23,11 @@ def task2(input_value):
 
 val = task1(3)
 print(val)
-print(val.get())
+print(val.eval())
 
 final_val = task2(val)
 print(final_val)
-print(final_val.get())
+print(final_val.eval())
 ```
 Prints:
 ```
@@ -37,7 +37,7 @@ Prints:
 36
 ```
 
-No function body is executed before `.get()` is called on a Future. Instead a graph is built and each Future is
+No function body is executed before `.eval()` is called on a Future. Instead a graph is built and each Future is
 assigned a hash that uniquely identifies its future value. If the code or input values change, then the
 output Future hashes also change. These hashes are then used to find cached results.
 
@@ -226,7 +226,7 @@ run <module>.<function>` command, or reused in a script.
 
 When calling a MerkL task function, it returns one or several _Future_ objects (depending on number of
 outs), which represents an value that hasn't been computed or fetched yet. In order to access the actual value, call
-the `.get()` method on the future. This will perform the computation of the output and all needed preceding values
+the `.eval()` method on the future. This will perform the computation of the output and all needed preceding values
 recursively, using cached values when available.
 
 To persist a computed output to disk, call the `write_file(output, track=[True/False])` function. If `track=False`, the

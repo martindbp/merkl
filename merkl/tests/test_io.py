@@ -1,5 +1,6 @@
 import os
 import json
+import cloudpickle
 import shutil
 import unittest
 from time import sleep
@@ -68,21 +69,32 @@ class TestIO(unittest.TestCase):
             f.write('goodbye cruel world')
 
         with self.assertRaises(TrackedFileNotUpToDateError):
-            mread(self.tmp_file, 'r')
+            mread(self.tmp_file, '')
 
-    def test_file_content_future(self):
+    def test_mread(self):
         with self.assertRaises(FileNotTrackedError):
-            mread('non_existant_file.txt', 'r')
+            mread('non_existant_file.txt', '')
 
         track_file(self.tmp_file, self.gitignore_file)
-        ff = mread(self.tmp_file, 'r')
-        self.assertEqual(ff.get(), 'hello world')
+        ff = mread(self.tmp_file, '')
+        self.assertEqual(ff.eval(), 'hello world')
 
-    def test_file_object_future(self):
+    def test_mopen(self):
         track_file(self.tmp_file, self.gitignore_file)
-        fof = mopen(self.tmp_file, 'r')
-        with fof.get() as f:
+        fof = mopen(self.tmp_file, '')
+        with fof.eval() as f:
             self.assertEqual(f.read(), 'hello world')
+
+    def test_mwrite(self):
+        @task
+        def task1():
+            return b'some data'
+
+        out = mwrite(task1(), self.tmp_file)
+        out.eval()
+
+        with open(self.tmp_file, 'rb') as f:
+            self.assertEqual(f.read(), cloudpickle.dumps(b'some data'))
 
     def test_path(self):
         self.assertNotEqual(FilePath(self.tmp_file).hash, FilePath(self.tmp_file2).hash)

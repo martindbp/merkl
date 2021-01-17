@@ -1,6 +1,7 @@
 import os
-import pathlib
 import json
+import pathlib
+import shutil
 from functools import partial
 from datetime import datetime
 from merkl.future import Future
@@ -61,26 +62,43 @@ class FilePath:
 
 
 def _get_file_object(md5_hash, flags):
-    return open(cache_file_path(md5_hash, cwd), flags)
+    return open(cache_file_path(md5_hash, cwd), 'r'+flags)
 
 
 def _get_file_content(md5_hash, flags):
-    with open(cache_file_path(md5_hash, cwd), flags) as f:
+    with open(cache_file_path(md5_hash, cwd), 'r'+flags) as f:
         return f.read()
 
 
 def mread(path, flags=''):
-    from merkl.task import task  # FIX: circular imports
     md5_hash = get_and_validate_md5_hash(path)
     f = partial(_get_file_content, md5_hash=md5_hash, flags=flags)
-    return Future(f, None, caches=[FileCache], hash=md5_hash, meta=path)
+    return Future(f, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
 
 
 def mopen(path, flags=''):
-    from merkl.task import task
     md5_hash = get_and_validate_md5_hash(path)
     f = partial(_get_file_object, md5_hash=md5_hash, flags=flags)
-    return Future(f, None, caches=[FileCache], hash=md5_hash, meta=path)
+    return Future(f, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
+
+
+def _mwrite_post_eval_hook(future, path, track):
+    # Copy file from cache (where it has been serialized) to `path`
+    shutil.copy(cache_file_path(future.hash), path)
+    if track:
+        track_file(path)
+
+
+def mwrite(future, path, track=True) -> None:
+    # To make sure the future gets written to the file cache, simply add FileCache to the future's caches
+    if FileCache not in future._caches:
+        future._caches.append(FileCache)
+
+    # Create dummy Future with a post eval hook that copies the file from cache, and tracks the file (updates <path>.merkl)
+    # Also, we don't use the original future for this, because might want to write the future to multiple files, and we
+    # need a separate node for visualization
+    hook = partial(_mwrite_post_eval_hook, path=path, track=track)
+    return Future(caches=[FileCache], hash=future.hash, meta=path, is_output=True, post_eval_hooks=[hook])
 
 
 def get_and_validate_md5_hash(path):

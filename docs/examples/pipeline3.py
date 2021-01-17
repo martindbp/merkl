@@ -1,4 +1,4 @@
-from merkl import task, mread
+from merkl import task, mread, mwrite
 
 
 @task
@@ -16,4 +16,4 @@ def train_eval():
     test_data = mread('test.csv')
     model = train(train_data, iterations=100)
     score = evaluate(model, test_data)
-    return model, score
+    return score, mwrite(model, 'model.csv')
