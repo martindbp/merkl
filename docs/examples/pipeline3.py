@@ -1,4 +1,4 @@
-from merkl import task, mread, mwrite
+from merkl import task, fread, fwrite
 
 
 @task
@@ -12,8 +12,8 @@ def evaluate(model, data):
 
 
 def train_eval():
-    train_data = mread('train.csv')
-    test_data = mread('test.csv')
+    train_data = fread('train.csv')
+    test_data = fread('test.csv')
     model = train(train_data, iterations=100)
     score = evaluate(model, test_data)
-    return score, mwrite(model, 'model.csv')
+    return score, fwrite(model, 'model.csv')

@@ -94,13 +94,13 @@ What would a slightly more realistic scenario look like? Here's a pipeline for a
 evaluation:
 
 ```python
-from merkl import mread
+from merkl import fread
 
 ...
 
 def train_eval():
-    train_data = mread('train.csv')
-    test_data = mread('test.csv')
+    train_data = fread('train.csv')
+    test_data = fread('test.csv')
     model = train(train_data, iterations=100)
     score = evaluate(model, test_data)
     return model, score

@@ -69,46 +69,46 @@ class TestIO(unittest.TestCase):
             f.write('goodbye cruel world')
 
         with self.assertRaises(TrackedFileNotUpToDateError):
-            mread(self.tmp_file, '')
+            fread(self.tmp_file, '')
 
-    def test_mread(self):
+    def test_fread(self):
         with self.assertRaises(FileNotTrackedError):
-            mread('non_existant_file.txt', '')
+            fread('non_existant_file.txt', '')
 
         track_file(self.tmp_file, self.gitignore_file)
-        ff = mread(self.tmp_file, '')
+        ff = fread(self.tmp_file, '')
         self.assertEqual(ff.eval(), 'hello world')
 
-    def test_mwrite(self):
+    def test_fwrite(self):
         @task
         def task1():
             return b'some data'
 
-        out = mwrite(task1(), self.tmp_file)
+        out = fwrite(task1(), self.tmp_file)
         out.eval()
 
         with open(self.tmp_file, 'rb') as f:
             self.assertEqual(f.read(), cloudpickle.dumps(b'some data'))
 
-    def test_mpath(self):
+    def test_fpath(self):
         @task
         def task1(path):
             return path
 
-        mpath1 = mpath(self.tmp_file)
-        self.assertTrue(isinstance(mpath1, Future))
-        self.assertEqual(task1(mpath1).eval(), self.tmp_file)
+        fpath1 = fpath(self.tmp_file)
+        self.assertTrue(isinstance(fpath1, Future))
+        self.assertEqual(task1(fpath1).eval(), self.tmp_file)
 
         track_file(self.tmp_file, self.gitignore_file)
-        mpath2 = mpath(self.tmp_file)
-        self.assertEqual(mpath1.hash, mpath2.hash)
+        fpath2 = fpath(self.tmp_file)
+        self.assertEqual(fpath1.hash, fpath2.hash)
 
         with open(self.tmp_file, 'w') as f:
             f.write('goodbye world')
         track_file(self.tmp_file, self.gitignore_file)
-        mpath3 = mpath(self.tmp_file)
+        fpath3 = fpath(self.tmp_file)
 
-        self.assertNotEqual(mpath3.hash, mpath2.hash)
+        self.assertNotEqual(fpath3.hash, fpath2.hash)
 
 
 if __name__ == '__main__':
