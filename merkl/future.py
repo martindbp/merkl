@@ -6,12 +6,8 @@ from merkl.exceptions import *
 
 
 def map_to_hash(val):
-    if hasattr(val, 'hash'):
-        # Futures and Paths/TrackedFilePaths has 'hash' attribute
-        ret = {'_hash': val.hash}
-        if hasattr(val, 'path'):
-            ret['path'] = str(val.path)
-        return ret
+    if isinstance(val, Future):
+        return {'_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
         raise NonSerializableArgError
     return val

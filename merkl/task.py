@@ -6,7 +6,6 @@ from functools import wraps, lru_cache
 from inspect import signature, getsource, isfunction, ismodule, getmodule
 from merkl.utils import doublewrap, nested_map, get_function_return_type_length
 from merkl.future import Future
-from merkl.io import TrackedFilePath
 from merkl.exceptions import *
 
 
@@ -61,8 +60,6 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=[], caches=[], serializ
             deps[i] = f'<Module "{dep.__name__}: {code_hash(dep, is_module=True)}>'
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
-        elif isinstance(dep, TrackedFilePath):
-            deps[i] = repr(dep)
         elif not isinstance(dep, str):
             raise NonSerializableFunctionDepError
 

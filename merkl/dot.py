@@ -56,8 +56,6 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
 
         if node_id not in printed:
             color = 'green' if future.in_cache() else 'red'
-#            if future.is_output:
-#                breakpoint()
             if future.is_io:
                 # NOTE: in this case we store the file path in meta
                 node_label = f'{future.meta}<br/>{future.hash[:4]}'

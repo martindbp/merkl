@@ -2,6 +2,7 @@ Add capability to store result metadata in the cache
     Cache backend gets meta data as well, decides if and how to store it
 
 Add FilePath class, next to TrackedFilePath, which instead of reading a tracked file just hashes the content
+    Maybe reuse Future for these for symmetry, even though they don't do any work?
 
 Copy file when tracking rather than hard link, since we don't have copy on write
 

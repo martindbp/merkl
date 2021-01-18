@@ -5,8 +5,8 @@ import shutil
 import unittest
 from time import sleep
 from pathlib import Path
-from merkl import *
 import merkl.io
+from merkl import *
 from merkl.exceptions import FileNotTrackedError, TrackedFileNotUpToDateError
 
 
@@ -79,12 +79,6 @@ class TestIO(unittest.TestCase):
         ff = mread(self.tmp_file, '')
         self.assertEqual(ff.eval(), 'hello world')
 
-    def test_mopen(self):
-        track_file(self.tmp_file, self.gitignore_file)
-        fof = mopen(self.tmp_file, '')
-        with fof.eval() as f:
-            self.assertEqual(f.read(), 'hello world')
-
     def test_mwrite(self):
         @task
         def task1():
@@ -96,50 +90,25 @@ class TestIO(unittest.TestCase):
         with open(self.tmp_file, 'rb') as f:
             self.assertEqual(f.read(), cloudpickle.dumps(b'some data'))
 
-    def test_path(self):
-        self.assertNotEqual(FilePath(self.tmp_file).hash, FilePath(self.tmp_file2).hash)
-
-    def test_tracked_path(self):
-        track_file(self.tmp_file, self.gitignore_file)
-
+    def test_mpath(self):
         @task
         def task1(path):
-            # .. read file
-            return 1
+            return path
 
-        # Check that hash changes if we update the file content
-        out1 = task1(TrackedFilePath(self.tmp_file))
+        mpath1 = mpath(self.tmp_file)
+        self.assertTrue(isinstance(mpath1, Future))
+        self.assertEqual(task1(mpath1).eval(), self.tmp_file)
+
+        track_file(self.tmp_file, self.gitignore_file)
+        mpath2 = mpath(self.tmp_file)
+        self.assertEqual(mpath1.hash, mpath2.hash)
+
         with open(self.tmp_file, 'w') as f:
             f.write('goodbye world')
         track_file(self.tmp_file, self.gitignore_file)
-        out2 = task1(TrackedFilePath(self.tmp_file))
+        mpath3 = mpath(self.tmp_file)
 
-        self.assertNotEqual(out1.hash, out2.hash)
-
-    def test_tracked_paths(self):
-        track_file(self.tmp_file, self.gitignore_file)
-        track_file(self.tmp_file2, self.gitignore_file)
-
-        @task
-        def task1():
-            return 1
-
-        @task(deps=[TrackedFilePath(self.tmp_file)])
-        def task2():
-            return 1
-
-        tracked_paths = TrackedFilePath.get_dir_paths('/tmp/merkl/')
-        self.assertEqual(len(tracked_paths), 2)
-
-        @task(deps=tracked_paths)
-        def task3():
-            return 1
-
-        out1 = task1()
-        out2 = task2()
-        out3 = task3()
-        self.assertNotEqual(out1.hash, out2.hash)
-        self.assertNotEqual(out2.hash, out3.hash)
+        self.assertNotEqual(mpath3.hash, mpath2.hash)
 
 
 if __name__ == '__main__':

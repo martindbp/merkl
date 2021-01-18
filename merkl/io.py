@@ -13,72 +13,29 @@ from merkl.cache import cache_file_path, cache_dir_path, FileCache
 cwd = ''
 
 
-class TrackedFilePath:
-    """ Class to indicate that path refers to a merkl-tracked file, and hash should be used instead of path string as
-    dependency """
-    __slots__ = ['path', 'hash']
-
-    def __init__(self, path):
-        self.path = path
-        merkl_path = path + '.merkl'
-        if not os.path.exists(merkl_path):
-            raise FileNotTrackedError
-
-        with open(merkl_path, 'r') as f:
-            self.hash = json.loads(f.read())['md5_hash']
-
-    @classmethod
-    def get_dir_paths(cls, path):
-        tracked_paths = []
-        for path in pathlib.Path(path).rglob('*.merkl'):
-            if os.path.isdir(path):
-                continue
-            tracked_paths.append(TrackedFilePath(str(path).rstrip('.merkl')))
-        return tracked_paths
-
-    def __repr__(self):
-        return f'<TrackedFilePath: {self.hash}>'
-
-
-class FilePath:
-    """ Class to indicate that path file whose hash should be used instead of path string as dependency """
-    __slots__ = ['path', 'hash']
-
-    def __init__(self, path):
-        self.path = path
-        self.hash = get_hash_memory_optimized(path, mode='md5')
-
-    @classmethod
-    def get_dir_paths(cls, path, pattern='*'):
-        paths = []
-        for path in pathlib.Path(path).glob(pattern):
-            if os.path.isdir(path):
-                continue
-            paths.append(FilePath(str(path)))
-        return paths
-
-    def __repr__(self):
-        return f'<Path: {self.hash}>'
-
-
-def _get_file_object(md5_hash, flags):
-    return open(cache_file_path(md5_hash, cwd), 'r'+flags)
-
-
 def _get_file_content(md5_hash, flags):
     with open(cache_file_path(md5_hash, cwd), 'r'+flags) as f:
         return f.read()
 
 
+def mpath(path):
+    if not os.path.exists(path):
+        raise FileNotFoundError
+
+    try:
+        md5_hash = get_and_validate_md5_hash(path)
+    except FileNotTrackedError:
+        md5_hash = get_hash_memory_optimized(path)
+
+    def _return_path():
+        return path
+
+    return Future(_return_path, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
+
+
 def mread(path, flags=''):
     md5_hash = get_and_validate_md5_hash(path)
     f = partial(_get_file_content, md5_hash=md5_hash, flags=flags)
-    return Future(f, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
-
-
-def mopen(path, flags=''):
-    md5_hash = get_and_validate_md5_hash(path)
-    f = partial(_get_file_object, md5_hash=md5_hash, flags=flags)
     return Future(f, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
 
 
