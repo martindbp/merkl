@@ -10,8 +10,6 @@ execution order multiple times, if we have .eval() calls
 Use execution order when calling `merkl run`. Provide `--target [N/<name>]` parameter, where N is number of cores if on
 local machine, and <name> could be AWS or something.
 
-Allow Dict outs
-
 Add a FileObjectWriteFuture (and rename FileObjectFuture -> FileObjectReadFuture?) which is returned when doing:
     @task
     def task1():
@@ -37,8 +35,6 @@ Have a cache backend that dedupes using content hash.
     Implement SQLite backend, good for small values and links
 
 Make sure functions are executed in the same order as the code
-
-write_tracked_file(path)
 
 Have a `pipeline` version of the task decorator, which executes the function instead of deferring, and caches the pipeline
     pipeline can be a alias of task, but with "pipeline" set to True

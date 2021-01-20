@@ -4,7 +4,6 @@ import pathlib
 import shutil
 from functools import partial
 from datetime import datetime
-from merkl.future import Future
 from merkl.exceptions import FileNotTrackedError, NonSerializableArgError, TrackedFileNotUpToDateError
 from merkl.utils import get_hash_memory_optimized
 from merkl.cache import cache_file_path, cache_dir_path, FileCache
@@ -30,32 +29,20 @@ def fpath(path):
     def _return_path():
         return path
 
+    from merkl.future import Future
     return Future(_return_path, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
 
 
 def fread(path, flags=''):
+    from merkl.future import Future
     md5_hash = get_and_validate_md5_hash(path)
     f = partial(_get_file_content, md5_hash=md5_hash, flags=flags)
     return Future(f, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
 
 
-def _fwrite_post_eval_hook(future, path, track):
-    # Copy file from cache (where it has been serialized) to `path`
-    shutil.copy(cache_file_path(future.hash), path)
-    if track:
-        track_file(path)
-
-
 def fwrite(future, path, track=True) -> None:
-    # To make sure the future gets written to the file cache, simply add FileCache to the future's caches
-    if FileCache not in future._caches:
-        future._caches.append(FileCache)
-
-    # Create dummy Future with a post eval hook that copies the file from cache, and tracks the file (updates <path>.merkl)
-    # Also, we don't use the original future for this, because might want to write the future to multiple files, and we
-    # need a separate node for visualization
-    hook = partial(_fwrite_post_eval_hook, path=path, track=track)
-    return Future(caches=[FileCache], hash=future.hash, meta=path, is_output=True, post_eval_hooks=[hook])
+    future.output_files.append((path, track))
+    return future
 
 
 def get_and_validate_md5_hash(path):
@@ -80,7 +67,15 @@ def get_file_modified_date(path):
     return datetime.fromtimestamp(path.stat().st_mtime)
 
 
-def track_file(file_path, gitignore_path='.gitignore'):
+def write_track_file(path, content_bytes, content_hash, track=True):
+    with open(path, 'wb') as f:
+        f.write(content_bytes)
+
+    if track:
+        track_file(path, md5_hash=content_hash)
+
+
+def track_file(file_path, gitignore_path='.gitignore', md5_hash=None):
     """
     1. Hash the file
     2. Create a new file `<file>.merkl` containing the file hash and timestamp
@@ -88,7 +83,7 @@ def track_file(file_path, gitignore_path='.gitignore'):
     4. Add `<file>` to `.gitignore` if there is one
     """
     gitignore_exists = os.path.exists('.gitignore')
-    md5_hash = get_hash_memory_optimized(file_path, mode='md5')
+    md5_hash = get_hash_memory_optimized(file_path, mode='md5') if md5_hash is None else md5_hash
 
     merkl_file_path = file_path + '.merkl'
     with open(merkl_file_path, 'w') as f:

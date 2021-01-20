@@ -40,3 +40,7 @@ class NumReturnValuesMismatchError(BaseException):
 
 class TrackedFileNotUpToDateError(BaseException):
     pass
+
+
+class NoSerializerError(BaseException):
+    pass

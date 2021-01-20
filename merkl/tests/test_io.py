@@ -1,6 +1,6 @@
 import os
 import json
-import cloudpickle
+import pickle
 import shutil
 import unittest
 from time import sleep
@@ -88,7 +88,7 @@ class TestIO(unittest.TestCase):
         out.eval()
 
         with open(self.tmp_file, 'rb') as f:
-            self.assertEqual(f.read(), cloudpickle.dumps(b'some data'))
+            self.assertEqual(f.read(), pickle.dumps(b'some data'))
 
     def test_fpath(self):
         @task

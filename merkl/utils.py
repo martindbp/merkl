@@ -85,7 +85,7 @@ def get_return_nodes(node, collect):
             get_return_nodes(child_node, collect)
 
 
-def get_function_return_type_length(f):
+def get_function_return_info(f):
     dedented_source = textwrap.dedent(inspect.getsource(f))
     function_ast = ast.parse(dedented_source).body[0]
     return_nodes = []
@@ -97,6 +97,8 @@ def get_function_return_type_length(f):
         type_name = type(node.value).__name__
         if type_name == 'Tuple':
             num_returns.append(len(node.value.elts))
+        elif type_name == 'Dict':
+            num_returns.append(tuple([key.s for key in node.value.keys]))
         else:
             # It it's not tuple, we treat it as a single value
             num_returns.append(1)

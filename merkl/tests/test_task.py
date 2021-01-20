@@ -84,10 +84,10 @@ class TestTask(unittest.TestCase):
                 return input_value, 2, 3
             return input_value, 3
 
-        # Single return value of other type than tuple should just produce a single Future
+        # Single return value of other type than tuple should just produce a single Future (except dict)
         @task
         def _task1(input_value):
-            return {'key1': 1, 'key2': input_value*2}
+            return [1, 2*input_value]
 
         out = _task1('test')
         self.assertTrue(isinstance(out, Future))
@@ -127,6 +127,17 @@ class TestTask(unittest.TestCase):
 
         with self.assertRaises(WrongNumberOfOutsError):
             _task5('test').eval()
+
+        @task
+        def _task6(input_value):
+            return {'out1': 3, 'out2': input_value}
+
+        out = _task6(5)
+        self.assertTrue(isinstance(out, dict))
+        self.assertEqual(len(out), 2)
+        self.assertEqual(set(out.keys()), set(['out1', 'out2']))
+        self.assertEqual(out['out1'].eval(), 3)
+        self.assertEqual(out['out2'].eval(), 5)
 
     def test_pipelines(self):
         @task(outs=lambda input_values: len(input_values))

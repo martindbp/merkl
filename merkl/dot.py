@@ -12,11 +12,9 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
     # NOTE: This is confusing code, but probably not worth spending time on...
     for future in futures:
         node_id = future.hash[:6]
-        if future.is_output:
-            node_id = f'{node_id}-{future.meta}'
         node_label = future.hash[:4]
         code_args_hash = future.code_args_hash[:6] if future.code_args_hash else None
-        if not future.is_io and code_args_hash not in printed:
+        if not future.is_input and code_args_hash not in printed:
             fn_name = f'{future.fn.__name__}: {future.fn_code_hash[:4]}'
             if future.fn_code_hash not in printed:
                 # Only print a function's deps once, in case of multiple invocations (list may be long)
@@ -56,9 +54,10 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
 
         if node_id not in printed:
             color = 'green' if future.in_cache() else 'red'
-            if future.is_io:
+            if future.is_input or len(future.output_files) > 0:
                 # NOTE: in this case we store the file path in meta
-                node_label = f'{future.meta}<br/>{future.hash[:4]}'
+                path = future.meta if future.is_input else '<br/>'.join(path for path, _ in future.output_files)
+                node_label = f'{path}<br/>{future.hash[:4]}'
                 shape = 'cylinder'
             else:
                 shape = 'parallelogram'
@@ -66,10 +65,8 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             label = f"< <font color='{color}'>{node_label}</font> >"
 
             print(f'\t"out_{node_id}" [shape={shape}, style=dashed, label={label}];')
-            if not future.is_io:
+            if not future.is_input:
                 print(f'\t"fn_{code_args_hash}" -> "out_{node_id}"')
-            if future.is_output:
-                print(f'\t"out_{future.hash[:6]}" -> "out_{node_id}"')
 
             printed.add(node_id)
 

@@ -2,7 +2,7 @@ import unittest
 from merkl import *
 
 
-class TestIO(unittest.TestCase):
+class TestCache(unittest.TestCase):
     def test_caching(self):
         task_has_run = False
 
