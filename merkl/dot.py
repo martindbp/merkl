@@ -12,7 +12,6 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
     # NOTE: This is confusing code, but probably not worth spending time on...
     for future in futures:
         node_id = future.hash[:6]
-        node_label = future.hash[:4]
         code_args_hash = future.code_args_hash[:6] if future.code_args_hash else None
         if not future.is_input and code_args_hash not in printed:
             fn_name = f'{future.fn.__name__}: {future.fn_code_hash[:4]}'
@@ -57,10 +56,11 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             if future.is_input or len(future.output_files) > 0:
                 # NOTE: in this case we store the file path in meta
                 path = future.meta if future.is_input else '<br/>'.join(path for path, _ in future.output_files)
-                node_label = f'{path}<br/>{future.hash[:4]}'
                 shape = 'cylinder'
+                node_label = f'{path}<br/>{future.hash[:4]}'
             else:
                 shape = 'parallelogram'
+                node_label = f'{future.out_name}: {future.hash[:4]}'
 
             label = f"< <font color='{color}'>{node_label}</font> >"
 
