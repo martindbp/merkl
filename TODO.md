@@ -1,3 +1,15 @@
+Fix issue with non-kw arg to decorators
+
+Implement HashMode.RECURSIVE by adding functions defined in same module as deps
+
+Refactor exceptions
+
+Mark a task as a batch version of another task -> hashes of outputs use the code of the single-use task
+    Make sure that batch function input is a list, where each item corresponds to args for the single function.
+    Also check that number of returns matches length of this list
+    In Future, if batch, we need to override how many return Futures there are, and set their hash to the
+    single-function hash
+
 Add capability to store result metadata in the cache
     Cache backend gets meta data as well, decides if and how to store it
 
@@ -17,8 +29,6 @@ Add a FileObjectWriteFuture (and rename FileObjectFuture -> FileObjectReadFuture
             f.write(...)
 
         return f
-
-Mark a task as a batch version of another task -> hashes of outputs use the code of the single-use task
 
 Implement --pull option for run command, that doesn't run, just pulls the tracked files and cached futures
     For tracked files, need to modify the timestamp to match the one in the .merkl file

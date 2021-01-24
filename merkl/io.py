@@ -75,14 +75,15 @@ def write_track_file(path, content_bytes, content_hash, track=True):
         track_file(path, md5_hash=content_hash)
 
 
-def track_file(file_path, gitignore_path='.gitignore', md5_hash=None):
+def track_file(file_path, gitignore_path=None, md5_hash=None):
     """
     1. Hash the file
     2. Create a new file `<file>.merkl` containing the file hash and timestamp
     3. Hard link the file to `.merkl/cache`
     4. Add `<file>` to `.gitignore` if there is one
     """
-    gitignore_exists = os.path.exists('.gitignore')
+    gitignore_path = gitignore_path or f'{cwd}.gitignore'
+    gitignore_exists = os.path.exists(gitignore_path)
     md5_hash = get_hash_memory_optimized(file_path, mode='md5') if md5_hash is None else md5_hash
 
     merkl_file_path = file_path + '.merkl'

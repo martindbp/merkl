@@ -44,3 +44,7 @@ class TrackedFileNotUpToDateError(BaseException):
 
 class NoSerializerError(BaseException):
     pass
+
+
+class BatchTaskError(BaseException):
+    pass

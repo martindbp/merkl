@@ -136,8 +136,6 @@ class Future:
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
-            if self.fn is None:
-                breakpoint()
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
@@ -161,6 +159,7 @@ class Future:
 
                 for path, track in self.output_files:
                     write_track_file(path, specific_out_bytes, content_hash, track)
+
                 for cache in self.caches:
                     if not cache.has(self.hash):
                         cache.add(content_hash, self.hash, specific_out_bytes)

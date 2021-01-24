@@ -36,6 +36,60 @@ def validate_outs(outs, sig=None, return_type=None):
 
 
 @doublewrap
+def batch(batch_fn, single_fn=None):
+    if single_fn:
+        if not hasattr(single_fn, 'is_task'):
+            raise BatchTaskError(f'Function {single_fn} is not decorated with as a task')
+
+        if (not isinstance(single_fn.outs, int) or single_fn.outs != 1):
+            raise BatchTaskError(f'Function {single_fn} must have exactly one out')
+
+    batch_fn_code_hash = code_hash(batch_fn, True)
+
+    @wraps(batch_fn)
+    def wrap(args):
+        if callable(args):
+            raise BatchTaskError(f'Function {args} is not decorated with as a task')
+        elif not isinstance(args, list):
+            raise BatchTaskError(f'Batch args {args} is not a list')
+
+        # Validate that args is a list of tuples, or single_fn has single input
+
+        use_single_fn = single_fn
+        if single_fn is None:
+            # Create a single-out version of the batch function. This will be used to create the future, but
+            # `batch_fn` will be used to do the actual calculation
+            use_single_fn = task(outs=1)(batch_fn)
+
+        outs = []
+        outs_shared_cache = {}
+        for i, args_tuple in enumerate(args):
+            if not isinstance(args_tuple, tuple):
+                raise BatchTaskError(f'Batch arg {args_tuple} is not a tuple')
+
+            out = use_single_fn(*args_tuple)
+            # Trigger calculation of the hash, which will be cached
+            out.hash
+            # Swap out the function for the batch version
+            out.fn = batch_fn
+            # Swap out code_args_hash to the batch_fn code hash, so
+            # that the the value can be taken out of the shared cache
+            # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to
+            # store the output temporarily
+            out._code_args_hash = batch_fn_code_hash
+            # Need to set the shared cache to be shared across all batch invocations
+            out.outs_shared_cache = outs_shared_cache
+            # Change the out name to point to the batch index
+            out.out_name = i
+
+            outs.append(out)
+
+        return outs
+
+    return wrap
+
+
+@doublewrap
 def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, serializer=None):
     deps = deps or []
     caches = caches or []
@@ -108,4 +162,6 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
             return outputs[0]
         return outputs if return_type == 'Dict' else list(outputs.values())
 
+    wrap.is_task = True
+    wrap.outs = outs
     return wrap
