@@ -41,21 +41,21 @@ class TestTask(unittest.TestCase):
         class MyClass:
             pass
 
-        with self.assertRaises(NonSerializableArgError):
+        with self.assertRaises(SerializationError):
             embed_bert(MyClass()).hash
 
     def test_outs(self):
-        with self.assertRaises(NonPositiveOutsError):
+        with self.assertRaises(TaskOutsError):  # <= 0
             @task(outs=0)
             def _task_zero_outs(input_value):
                 return input_value, 3
 
-        with self.assertRaises(NonPositiveOutsError):
+        with self.assertRaises(TaskOutsError):  # <= 0
             @task(outs=-1)
             def _task_negative_outs(input_value):
                 return input_value, 3
 
-        with self.assertRaises(BadOutsValueError):
+        with self.assertRaises(TaskOutsError):  # bad outs type
             @task(outs=1.0)
             def _task_float_outs(input_value):
                 return input_value, 3
@@ -70,7 +70,7 @@ class TestTask(unittest.TestCase):
         for out in outs:
             self.assertTrue(isinstance(out, Future))
 
-        with self.assertRaises(NumReturnValuesMismatchError):
+        with self.assertRaises(TaskOutsError):  # num returns mismatch
             @task
             def _task1(input_value):
                 if input_value > 4:
@@ -110,7 +110,7 @@ class TestTask(unittest.TestCase):
         self.assertEqual(len(outs), 4)
 
         # Test that the wrong function signature fails
-        with self.assertRaises(NonMatchingSignaturesError):
+        with self.assertRaises(TaskOutsError):
             @task(outs=lambda inpoot_value, k: k)
             def _task4(input_value, k):
                 return input_value, 3
@@ -125,7 +125,7 @@ class TestTask(unittest.TestCase):
         def _task5(input_value):
             return input_value, 3
 
-        with self.assertRaises(WrongNumberOfOutsError):
+        with self.assertRaises(TaskOutsError):
             _task5('test').eval()
 
         @task

@@ -4,7 +4,7 @@ import pathlib
 import shutil
 from functools import partial
 from datetime import datetime
-from merkl.exceptions import FileNotTrackedError, NonSerializableArgError, TrackedFileNotUpToDateError
+from merkl.exceptions import FileNotTrackedError, TrackedFileNotUpToDateError
 from merkl.utils import get_hash_memory_optimized
 from merkl.cache import cache_file_path, cache_dir_path, FileCache
 

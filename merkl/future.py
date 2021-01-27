@@ -10,7 +10,7 @@ def map_to_hash(val):
     if isinstance(val, Future):
         return {'_hash': val.hash}
     elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
-        raise NonSerializableArgError
+        raise SerializationError(f'Value {val} not serializable')
     return val
 
 
@@ -60,7 +60,7 @@ class Future:
         self.is_input = is_input
         self.output_files = output_files or []
         if len(self.output_files) > 0 and self.serializer is None:
-            raise NoSerializerError
+            raise SerializationError(f'No serializer set for future {self}')
 
     @property
     def caches(self):
@@ -141,9 +141,9 @@ class Future:
                 self.outs_shared_cache[self.code_args_hash] = outputs
 
         if isinstance(outputs, tuple) and len(outputs) != self.outs:
-            raise WrongNumberOfOutsError
+            raise TaskOutsError('Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
         elif isinstance(outputs, dict) and len(outputs) != len(self.outs):
-            raise WrongNumberOfOutsError
+            raise TaskOutsError('Wrong number of outputs: {len(outputs)}. Expected {len(self.outs)}')
 
         specific_out = outputs
         if self.out_name is not None:

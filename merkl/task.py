@@ -26,13 +26,13 @@ def code_hash(f, is_module=False):
 def validate_outs(outs, sig=None, return_type=None):
     if isinstance(outs, int):
         if outs <= 0:
-            raise NonPositiveOutsError
+            raise TaskOutsError(f'Outs: {outs} is not >= 1')
     elif callable(outs) and sig is not None:
         outs_sig = signature(outs)
         if outs_sig.parameters.keys() != sig.parameters.keys():
-            raise NonMatchingSignaturesError
+            raise TaskOutsError(f'Outs function signature does not match task: {outs_sig} vs {sig}')
     elif return_type != 'Dict':
-        raise BadOutsValueError
+        raise TaskOutsError(f'Bad outs type: {outs}')
 
 
 @doublewrap
@@ -102,9 +102,9 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
         # Get num outs from AST if possible
         return_types, num_returns = get_function_return_info(f)
         if len(return_types) != 1 and 'Tuple' in return_types:
-            raise ReturnTypeMismatchError
+            raise TaskOutsError(f'Mismatch of number of return values in function return statements: {f}')
         elif len(num_returns) != 1:
-            raise NumReturnValuesMismatchError
+            raise TaskOutsError(f'Mismatch of number of return values in function return statements: {f}')
 
         outs = num_returns.pop()
         return_type = return_types.pop()
@@ -119,7 +119,7 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
         elif not isinstance(dep, str):
-            raise NonSerializableFunctionDepError
+            raise SerializationError(f'Task dependency {dep} not serializable')
 
     if not isinstance(hash_mode, HashMode):
         raise TypeError
