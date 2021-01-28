@@ -1,10 +1,11 @@
+import json
 import hashlib
 import textwrap
 import pickle
 from enum import Enum
 from functools import wraps, lru_cache
 from inspect import signature, getsource, isfunction, ismodule, getmodule
-from merkl.utils import doublewrap, nested_map, get_function_return_info
+from merkl.utils import doublewrap, nested_map, get_function_return_info, find_function_deps, FunctionDep
 from merkl.future import Future
 from merkl.exceptions import *
 
@@ -12,6 +13,7 @@ from merkl.exceptions import *
 class HashMode(Enum):
     MODULE = 1
     FUNCTION = 2
+    FIND_DEPS = 3
 
 
 @lru_cache(maxsize=None)
@@ -109,9 +111,22 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
         outs = num_returns.pop()
         return_type = return_types.pop()
 
+    if not isinstance(hash_mode, HashMode):
+        raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
+
+    fn_code_hash = code_hash(f, hash_mode == HashMode.MODULE)
+
+    if hash_mode == HashMode.FIND_DEPS:
+        deps += find_function_deps(f)
+
     # Validate and resolve deps
     for i in range(len(deps)):
+        name = None
         dep = deps[i]
+        if isinstance(dep, FunctionDep):
+            name = dep.name
+            dep = dep.value
+
         if isfunction(dep):
             deps[i] = f'<Function "{dep.__name__}: {code_hash(dep)}>'
         elif ismodule(dep):
@@ -119,12 +134,12 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
         elif not isinstance(dep, str):
-            raise SerializationError(f'Task dependency {dep} not serializable')
-
-    if not isinstance(hash_mode, HashMode):
-        raise TypeError
-
-    fn_code_hash = code_hash(f, hash_mode == HashMode.MODULE)
+            try:
+                deps[i] = json.dumps(dep)
+            except TypeError:
+                raise SerializationError(f'Task dependency {dep} not serializable to JSON')
+        if name is not None:
+            deps[i] = (name, deps[i])
 
     @wraps(f)
     def wrap(*args, **kwargs):
@@ -164,4 +179,5 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
 
     wrap.is_task = True
     wrap.outs = outs
+    wrap.deps = deps
     return wrap

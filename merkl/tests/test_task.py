@@ -4,6 +4,7 @@ from io import StringIO
 
 from merkl.tests.tasks.embed_bert import embed_bert, embed_bert_large
 from merkl.tests.tasks.embed_elmo import embed_elmo
+from merkl.tests.tasks.find_deps_test import my_task
 from merkl.future import Future
 from merkl.task import task, batch, HashMode
 from merkl.exceptions import *
@@ -197,6 +198,11 @@ class TestTask(unittest.TestCase):
         # Check that all hashes are unique, except the last two which are equal
         self.assertEqual(len(set(hashes[:3])), 3)
         self.assertEqual(len(set(hashes[3:])), 1)
+
+        deps = [name for (name, dep) in my_task.deps]
+        self.assertEqual(len(deps), 2)
+        self.assertTrue('my_global_variable' in deps)
+        self.assertTrue('_my_fn' in deps)
 
     def test_future_operator_access(self):
         # Test that Future cannot be accessed by checking some operators

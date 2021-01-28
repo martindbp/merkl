@@ -1,5 +1,3 @@
-Implement HashMode.RECURSIVE by adding functions defined in same module as deps
-
 Refactor exceptions
 
 Add capability to store result metadata in the cache

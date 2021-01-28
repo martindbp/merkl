@@ -3,6 +3,10 @@ import ast
 import inspect
 import textwrap
 from functools import wraps
+from inspect import getmodule
+from inspect import isfunction
+from typing import NamedTuple
+import merkl
 
 
 OPERATORS = [
@@ -58,6 +62,33 @@ def nested_collect(structure, collect_function):
 
     nested_map(structure, _collect)
     return collected
+
+
+class FunctionDep(NamedTuple):
+    name: str
+    value: object
+
+
+def find_function_deps(f):
+    module = getmodule(f)
+    dedented_source = textwrap.dedent(inspect.getsource(f))
+    name_nodes = [node for node in ast.walk(ast.parse(dedented_source)) if isinstance(node, ast.Name)]
+    deps = []
+    seen = set()
+    for node in name_nodes:
+        if node.id in seen:
+            continue
+
+        seen.add(node.id)
+
+        if merkl.__dict__.get(node.id):
+            continue  # skip references to merkl stuff
+
+        dep = module.__dict__.get(node.id)
+        if dep:
+            deps.append(FunctionDep(node.id, dep))
+
+    return deps
 
 
 def get_hash_memory_optimized(f_path, mode='md5'):
