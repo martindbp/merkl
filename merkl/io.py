@@ -1,12 +1,13 @@
 import os
-import json
+import yaml
 import pathlib
 import shutil
+from yaml import Loader, Dumper
 from functools import partial
 from datetime import datetime
-from merkl.exceptions import FileNotTrackedError, TrackedFileNotUpToDateError
+from merkl.exceptions import FileNotTrackedError
 from merkl.utils import get_hash_memory_optimized
-from merkl.cache import cache_file_path, cache_dir_path, FileCache
+from merkl.cache import cache_file_path, cache_dir_path, DVCFileCache
 
 
 cwd = ''
@@ -17,7 +18,7 @@ def _get_file_content(md5_hash, flags):
         return f.read()
 
 
-def fpath(path):
+def path_future(path):
     if not os.path.exists(path):
         raise FileNotFoundError
 
@@ -30,36 +31,31 @@ def fpath(path):
         return path
 
     from merkl.future import Future
-    return Future(_return_path, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
+    return Future(_return_path, caches=[DVCFileCache], hash=md5_hash, meta=path, is_input=True)
 
 
-def fread(path, flags=''):
+def read_future(path, flags=''):
     from merkl.future import Future
     md5_hash = get_and_validate_md5_hash(path)
     f = partial(_get_file_content, md5_hash=md5_hash, flags=flags)
-    return Future(f, caches=[FileCache], hash=md5_hash, meta=path, is_input=True)
+    return Future(f, caches=[DVCFileCache], hash=md5_hash, meta=path, is_input=True)
 
 
-def fwrite(future, path, track=True) -> None:
+def write_future(future, path, track=True):
     future.output_files.append((path, track))
     return future
 
 
 def get_and_validate_md5_hash(path):
-    merkl_file = path + '.merkl'
-    if not os.path.exists(merkl_file):
-        raise FileNotTrackedError
+    tracked_file = path + '.dvc'
+    # TODO: recurse up if folder
 
-    with open(merkl_file) as f:
-        data = json.load(f)
-        md5_hash = data['md5_hash']
-        timestamp = data['modified_timestamp']
-        previous_modified_date = datetime.fromisoformat(timestamp)
-        current_modified_date = get_file_modified_date(path)
-        if current_modified_date != previous_modified_date:
-            raise TrackedFileNotUpToDateError
+    if not os.path.exists(tracked_file):
+        raise FileNotTrackedError(f'{tracked_file} does not exist')
 
-        return md5_hash
+    with open(tracked_file) as f:
+        data = yaml.load(f, Loader=Loader)
+        return data['outs'][0]['md5']
 
 
 def get_file_modified_date(path):
@@ -75,36 +71,26 @@ def write_track_file(path, content_bytes, content_hash, track=True):
         track_file(path, md5_hash=content_hash)
 
 
-def track_file(file_path, gitignore_path=None, md5_hash=None):
+def track_file(file_path, md5_hash=None):
     """
     1. Hash the file
-    2. Create a new file `<file>.merkl` containing the file hash and timestamp
-    3. Hard link the file to `.merkl/cache`
-    4. Add `<file>` to `.gitignore` if there is one
+    2. Create a new file `<file>.dvc` containing the file hash and timestamp
+    3. Hard link the file to `.dvc/cache`
     """
-    gitignore_path = gitignore_path or f'{cwd}.gitignore'
-    gitignore_exists = os.path.exists(gitignore_path)
     md5_hash = get_hash_memory_optimized(file_path, mode='md5') if md5_hash is None else md5_hash
 
-    merkl_file_path = file_path + '.merkl'
+    merkl_file_path = file_path + '.dvc'
     with open(merkl_file_path, 'w') as f:
-        json.dump({
-            'md5_hash': md5_hash,
-            'modified_timestamp': get_file_modified_date(file_path).isoformat(),
-        }, f, sort_keys=True, indent=4)
+        yaml.dump({
+            'outs': [
+                {'md5': md5_hash},
+            ]
+        }, f)
 
-    if not os.path.exists('{cwd}.merkl'):
+    if not os.path.exists('{cwd}.dvc'):
         os.makedirs(cache_dir_path(md5_hash, cwd), exist_ok=True)
 
     try:
         shutil.copy(file_path, cache_file_path(md5_hash, cwd))
     except FileExistsError:
         pass
-
-    if gitignore_exists:
-        with open(gitignore_path, 'r') as f:
-            lines = set(f.readlines())
-
-        if file_path not in lines:
-            with open(gitignore_path, 'a') as f:
-                f.write('\n' + file_path)

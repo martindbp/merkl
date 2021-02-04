@@ -60,7 +60,10 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
                 node_label = f'{path}<br/>{future.hash[:4]}'
             else:
                 shape = 'parallelogram'
-                node_label = f'{future.out_name}: {future.hash[:4]}'
+                if future.out_name is None:
+                    node_label = future.hash[:4]
+                else:
+                    node_label = f'{future.out_name}: {future.hash[:4]}'
 
             label = f"< <font color='{color}'>{node_label}</font> >"
 

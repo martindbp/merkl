@@ -41,7 +41,7 @@ def validate_outs(outs, sig=None, return_type=None):
 def batch(batch_fn, single_fn=None):
     if single_fn:
         if not hasattr(single_fn, 'is_task'):
-            raise BatchTaskError(f'Function {single_fn} is not decorated with as a task')
+            raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
 
         if (not isinstance(single_fn.outs, int) or single_fn.outs != 1):
             raise BatchTaskError(f'Function {single_fn} must have exactly one out')
@@ -51,7 +51,7 @@ def batch(batch_fn, single_fn=None):
     @wraps(batch_fn)
     def wrap(args):
         if callable(args):
-            raise BatchTaskError(f'Function {args} is not decorated with as a task')
+            raise BatchTaskError(f'Function {args} is not decorated as a task')
         elif not isinstance(args, list):
             raise BatchTaskError(f'Batch args {args} is not a list')
 

@@ -6,17 +6,17 @@ cache_override = 0  # 0 means no cache override
 IN_MEMORY_CACHE = {}
 
 def cache_dir_path(hash, cwd=''):
-    return f'{cwd}.merkl/cache/{hash[:2]}'
+    return f'{cwd}.dvc/cache/{hash[:2]}'
 
 
 def cache_file_path(hash, cwd=''):
-    return f'{cache_dir_path(hash, cwd)}/{hash}'
+    return f'{cache_dir_path(hash, cwd)}/{hash[2:]}'
 
 
 def get_cache_from_arg(arg):
     if arg is not None:
-        if arg == 'file':
-            return FileCache
+        if arg == 'dvc':
+            return DVCFileCache
         else:
             return InMemoryCache
 
@@ -57,7 +57,7 @@ class InMemoryCache:
         return hash in IN_MEMORY_CACHE
 
 
-class FileCache:
+class DVCFileCache:
     @classmethod
     def add(cls, content_hash, merkle_hash, content_bytes):
         os.makedirs(cache_dir_path(content_hash), exist_ok=True)

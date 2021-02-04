@@ -5,13 +5,11 @@ from pathlib import Path
 
 from merkl.cli.run import RunAPI
 from merkl.cli.dot import DotAPI
-from merkl.cli.track import TrackAPI
 
 
 class MerkLAPI:
     run = RunAPI()
     dot = DotAPI()
-    track = TrackAPI()
 
 
 def main():
@@ -38,7 +36,7 @@ def main():
     run_parser = subparsers.add_parser(
         'run', description='Run a task or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
-    run_parser.add_argument('--cache', choices=['file', 'memory'], help='Override cache for all futures')
+    run_parser.add_argument('--cache', choices=['dvc', 'memory'], help='Override cache for all futures')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
 
     # ------------- DAG --------------
@@ -46,15 +44,8 @@ def main():
         'dot', description='Output the DAG of a task or pipeline as a dot file')
     dot_parser.set_defaults(command='dot', subcommand='dot')
     dot_parser.add_argument('--rankdir', choices=['TB', 'LR'], help='Value for the rankdir dot graph parameter')
-    dot_parser.add_argument('--cache', choices=['file', 'memory'], help='Override cache for all futures')
+    dot_parser.add_argument('--cache', choices=['dvc', 'memory'], help='Override cache for all futures')
     dot_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
-
-
-    # ------------- TRACK ------------
-    track_parser = subparsers.add_parser(
-        'track', description='Track a file')
-    track_parser.set_defaults(command='track', subcommand='track')
-    track_parser.add_argument('files', nargs='*', help='Files to track')
 
     args, unknown_args = parser.parse_known_args()
     kwargs = dict(args._get_kwargs())

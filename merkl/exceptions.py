@@ -10,10 +10,6 @@ class FileNotTrackedError(BaseException):
     pass
 
 
-class TrackedFileNotUpToDateError(BaseException):
-    pass
-
-
 class BatchTaskError(BaseException):
     pass
 

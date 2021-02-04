@@ -233,6 +233,7 @@ class TestTask(unittest.TestCase):
             return 3
 
         with self.assertRaises(BatchTaskError):
+            # `fun` is not decorated
             @batch(fun)
             def fun2(args):
                 pass
@@ -241,6 +242,7 @@ class TestTask(unittest.TestCase):
             return 1, 3
 
         with self.assertRaises(BatchTaskError):
+            # `fun3` has more than one return value
             @batch(fun3)
             def fun4(args):
                 pass
