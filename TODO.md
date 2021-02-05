@@ -1,8 +1,3 @@
-Need deps for batch. Can use FIND_DEPS
-
-Use DVC by default -> use .dvc files and same format, user cache there
-    Check that we can put merkle hash in .dvc meta field, and it doesn't get overwritten after a dvc run command
-
 Add capability to store result metadata in the cache
     Cache backend gets meta data as well, decides if and how to store it
 

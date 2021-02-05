@@ -37,14 +37,39 @@ def validate_outs(outs, sig=None, return_type=None):
         raise TaskOutsError(f'Bad outs type: {outs}')
 
 
+def validate_resolve_deps(deps):
+    for i in range(len(deps)):
+        name = None
+        dep = deps[i]
+        if isinstance(dep, FunctionDep):
+            name = dep.name
+            dep = dep.value
+
+        if isfunction(dep):
+            deps[i] = f'<Function "{dep.__name__}: {code_hash(dep)}>'
+        elif ismodule(dep):
+            deps[i] = f'<Module "{dep.__name__}: {code_hash(dep, is_module=True)}>'
+        elif isinstance(dep, bytes):
+            deps[i] = dep.decode('utf-8')
+        elif not isinstance(dep, str):
+            try:
+                deps[i] = json.dumps(dep)
+            except TypeError:
+                raise SerializationError(f'Task dependency {dep} not serializable to JSON')
+        if name is not None:
+            deps[i] = (name, deps[i])
+
 @doublewrap
-def batch(batch_fn, single_fn=None):
+def batch(batch_fn, single_fn=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, serializer=None):
     if single_fn:
         if not hasattr(single_fn, 'is_task'):
             raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
 
-        if (not isinstance(single_fn.outs, int) or single_fn.outs != 1):
+        if not isinstance(single_fn.outs, int) or single_fn.outs != 1:
             raise BatchTaskError(f'Function {single_fn} must have exactly one out')
+
+    if not isinstance(hash_mode, HashMode):
+        raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
 
     batch_fn_code_hash = code_hash(batch_fn, True)
 
@@ -61,7 +86,7 @@ def batch(batch_fn, single_fn=None):
         if single_fn is None:
             # Create a single-out version of the batch function. This will be used to create the future, but
             # `batch_fn` will be used to do the actual calculation
-            use_single_fn = task(outs=1)(batch_fn)
+            use_single_fn = task(1, hash_mode, deps, caches, serializer)(batch_fn)
 
         outs = []
         outs_shared_cache = {}
@@ -119,27 +144,7 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
     if hash_mode == HashMode.FIND_DEPS:
         deps += find_function_deps(f)
 
-    # Validate and resolve deps
-    for i in range(len(deps)):
-        name = None
-        dep = deps[i]
-        if isinstance(dep, FunctionDep):
-            name = dep.name
-            dep = dep.value
-
-        if isfunction(dep):
-            deps[i] = f'<Function "{dep.__name__}: {code_hash(dep)}>'
-        elif ismodule(dep):
-            deps[i] = f'<Module "{dep.__name__}: {code_hash(dep, is_module=True)}>'
-        elif isinstance(dep, bytes):
-            deps[i] = dep.decode('utf-8')
-        elif not isinstance(dep, str):
-            try:
-                deps[i] = json.dumps(dep)
-            except TypeError:
-                raise SerializationError(f'Task dependency {dep} not serializable to JSON')
-        if name is not None:
-            deps[i] = (name, deps[i])
+    validate_resolve_deps(deps)
 
     @wraps(f)
     def wrap(*args, **kwargs):
