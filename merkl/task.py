@@ -3,7 +3,8 @@ import hashlib
 import textwrap
 import pickle
 from enum import Enum
-from functools import wraps, lru_cache
+from functools import lru_cache
+from sigtools.specifiers import forwards_to_function
 from inspect import signature, getsource, isfunction, ismodule, getmodule
 from merkl.utils import doublewrap, nested_map, get_function_return_info, find_function_deps, FunctionDep
 from merkl.future import Future
@@ -59,10 +60,11 @@ def validate_resolve_deps(deps):
         if name is not None:
             deps[i] = (name, deps[i])
 
+
 @doublewrap
 def batch(batch_fn, single_fn=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, serializer=None):
     if single_fn:
-        if not hasattr(single_fn, 'is_task'):
+        if not hasattr(single_fn, 'type') or single_fn.type != 'task':
             raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
 
         if not isinstance(single_fn.outs, int) or single_fn.outs != 1:
@@ -73,7 +75,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FUNCTION, deps=None, cach
 
     batch_fn_code_hash = code_hash(batch_fn, True)
 
-    @wraps(batch_fn)
+    @forwards_to_function(batch_fn)
     def wrap(args):
         if callable(args):
             raise BatchTaskError(f'Function {args} is not decorated as a task')
@@ -113,6 +115,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FUNCTION, deps=None, cach
 
         return outs
 
+    wrap.__wrapped__ = batch_fn
     return wrap
 
 
@@ -146,7 +149,7 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
 
     validate_resolve_deps(deps)
 
-    @wraps(f)
+    @forwards_to_function(f)
     def wrap(*args, **kwargs):
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
@@ -182,7 +185,50 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
             return outputs[0]
         return outputs if return_type == 'Dict' else list(outputs.values())
 
-    wrap.is_task = True
+    wrap.type = 'task'
     wrap.outs = outs
     wrap.deps = deps
+    wrap.__wrapped__ = f
+    return wrap
+
+
+@doublewrap
+def pipeline(f, hash_mode=HashMode.FUNCTION, deps=None, caches=None):
+    deps = deps or []
+    caches = caches or []
+    sig = signature(f)
+
+    if not isinstance(hash_mode, HashMode):
+        raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
+
+    pipeline_code_hash = code_hash(f, hash_mode == HashMode.MODULE)
+
+    if hash_mode == HashMode.FIND_DEPS:
+        deps += find_function_deps(f)
+
+    validate_resolve_deps(deps)
+
+    @forwards_to_function(f)
+    def wrap(*args, **kwargs):
+        bound_args = sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+
+        outs = Future(
+            f,
+            pipeline_code_hash,
+            1,
+            None,
+            deps,
+            caches,
+            pickle,
+            bound_args,
+            is_pipeline=True,
+        ).eval()
+
+        return outs
+
+    wrap.type = 'pipeline'
+    wrap.outs = 1
+    wrap.deps = deps
+    wrap.__wrapped__ = f
     return wrap

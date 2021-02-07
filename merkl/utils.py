@@ -2,10 +2,10 @@ import hashlib
 import ast
 import inspect
 import textwrap
-from functools import wraps
 from inspect import getmodule
 from inspect import isfunction
 from typing import NamedTuple
+from sigtools.specifiers import forwards_to_function
 import merkl
 
 
@@ -26,9 +26,9 @@ def doublewrap(f):
     or
     @decorator
     """
-    @wraps(f)
+    @forwards_to_function(f)
     def new_dec(*args, **kwargs):
-        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]) and not hasattr(args[0], 'is_task'):
+        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]) and not hasattr(args[0], 'type'):
             # Actual decorated function
             return f(args[0])
         else:

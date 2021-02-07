@@ -1,6 +1,6 @@
-import functools
 from importlib import import_module
 import clize
+from sigtools.specifiers import forwards_to_function
 
 from merkl.future import Future, map_future_to_value
 from merkl.utils import nested_map, nested_collect
@@ -9,7 +9,7 @@ from merkl.cache import CacheOverride, get_cache_from_arg
 
 
 def print_graph_wrapper(f, cache, rankdir):
-    @functools.wraps(f)
+    @forwards_to_function(f)
     def _wrapper(*args, **kwargs):
         with CacheOverride(cache):
             futures = nested_collect(f(*args, **kwargs), lambda x: isinstance(x, Future))

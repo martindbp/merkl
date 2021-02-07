@@ -6,8 +6,9 @@ from merkl.tests.tasks.embed_bert import embed_bert, embed_bert_large
 from merkl.tests.tasks.embed_elmo import embed_elmo
 from merkl.tests.tasks.find_deps_test import my_task
 from merkl.future import Future
-from merkl.task import task, batch, HashMode
+from merkl.task import task, batch, pipeline, HashMode
 from merkl.exceptions import *
+from merkl.cache import InMemoryCache
 
 
 def get_stderr(f):
@@ -122,12 +123,20 @@ class TestTask(unittest.TestCase):
             return input_value, 3
 
         # Check that we get error if we return wrong number of outs
-        @task(outs=1)
+        @task(outs=3)
         def _task5(input_value):
             return input_value, 3
 
         with self.assertRaises(TaskOutsError):
-            _task5('test').eval()
+            a, b, c = _task5('test')
+            a.eval()
+
+        # Unless it's one out
+        @task(outs=1)
+        def _task5(input_value):
+            return input_value, 3
+
+        _task5('test').eval()
 
         @task
         def _task6(input_value):
@@ -286,6 +295,38 @@ class TestTask(unittest.TestCase):
             self.assertEqual(batch_out_without_single.eval(), batch_out.eval())
 
         self.assertEqual(called, 1)
+
+    def test_pipelines(self):
+        @task
+        def my_task(k):
+            return k*k
+
+        with self.assertRaises(SerializationError):
+            # my_task has no cache set, so caching the pipeline result
+            # would not cache the nested Future result
+
+            @pipeline(caches=[InMemoryCache])
+            def my_pipeline(i):
+                return my_task(i)
+
+            my_pipeline(3)
+
+        @task(caches=[InMemoryCache])
+        def my_other_task(m):
+            return m ** 2
+
+        @pipeline(caches=[InMemoryCache])
+        def my_pipeline(i):
+            return my_other_task(my_task(i))
+
+        fut1 = my_pipeline(2)
+        self.assertFalse(fut1.in_cache())
+        self.assertEqual(fut1.eval(), 16)
+
+        fut2 = my_pipeline(2)
+        self.assertTrue(fut2.in_cache())
+        self.assertEqual(fut2.hash, fut1.hash)
+        self.assertEqual(fut2.parent_futures(), [])
 
 
 if __name__ == '__main__':

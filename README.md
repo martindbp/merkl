@@ -76,13 +76,13 @@ $ merkl run test.my_pipeline 3
 
 See [clize](https://clize.readthedocs.io/en/stable/) for more information on how to pass parameters from the command line.
 
-To set a default cache for all Future values, the `--cache file` option can be supplied:
+To set a default cache for all Future values, the `--cache dvc` option can be supplied:
 
-`$ merkl run --cache file test.my_pipeline 3`
+`$ merkl run --cache dvc test.my_pipeline 3`
 
 Now, when running rendering the DAG, cached values are highlighted in green:
 
-`$ merkl dot --cache file test.my_pipeline 3 | dot -Tpng | display`
+`$ merkl dot --cache dvc test.my_pipeline 3 | dot -Tpng | display`
 
 ![](docs/examples/pipeline2.png)
 

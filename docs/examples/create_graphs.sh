@@ -11,4 +11,7 @@ merkl dot --cache dvc --rankdir LR pipeline2.my_pipeline 3 | dot -Tpng -opipelin
 dvc add train.csv test.csv
 merkl dot --cache dvc --rankdir LR pipeline3.train_eval | dot -Tpng -opipeline4.png
 
+merkl dot --cache dvc --rankdir LR pipeline4.train_eval | dot -Tpng -opipeline5.png
+merkl dot --cache dvc --rankdir LR pipeline4.train_eval | dot -Tpng -opipeline5.png
+
 rm -rf .dvc .git .gitignore .dvcignore train.csv.dvc test.csv.dvc

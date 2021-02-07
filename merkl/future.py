@@ -20,10 +20,12 @@ def map_future_to_value(val):
     return val
 
 
+FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'serializer', 'parent_pipeline']
+
 class Future:
     __slots__ = [
-        'fn', 'fn_code_hash', 'outs', 'out_name', 'deps', '_caches', 'serializer', 'bound_args',
-        'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files',
+        'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', '_caches', 'serializer', 'bound_args',
+        'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline', 'parent_pipeline'
     ]
 
     def __init__(
@@ -41,8 +43,11 @@ class Future:
         meta=None,
         is_input=False,
         output_files=None,
+        is_pipeline=False,
     ):
         self.fn = fn
+        if hasattr(fn, '__name__'):
+            self.fn_name = fn.__name__
         self.fn_code_hash = fn_code_hash
         self.outs = outs
         self.out_name = out_name
@@ -62,6 +67,8 @@ class Future:
         if len(self.output_files) > 0 and self.serializer is None:
             raise SerializationError(f'No serializer set for future {self}')
 
+        self.is_pipeline = is_pipeline
+
     @property
     def caches(self):
         if not self.is_input and merkl.cache.cache_override != 0:
@@ -71,11 +78,11 @@ class Future:
 
     @property
     def code_args_hash(self):
-        if not self.bound_args:
-            return None
-
         if self._code_args_hash:
             return self._code_args_hash
+
+        if not self.bound_args:
+            return None
 
         # Hash args, kwargs and code together
         hash_data = {
@@ -140,10 +147,16 @@ class Future:
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
 
-        if isinstance(outputs, tuple) and len(outputs) != self.outs:
-            raise TaskOutsError('Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
+        if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
+            raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
         elif isinstance(outputs, dict) and len(outputs) != len(self.outs):
             raise TaskOutsError('Wrong number of outputs: {len(outputs)}. Expected {len(self.outs)}')
+
+
+        if self.is_pipeline:
+            # Set the pipeline function on all output futures
+            for future in nested_collect(outputs, lambda x: isinstance(x, Future)):
+                future.parent_pipeline = self.fn
 
         specific_out = outputs
         if self.out_name is not None:
@@ -151,7 +164,7 @@ class Future:
 
         if not self.is_input:
             # Futures from io should not be cached (but is read from cache)
-            if len(self.caches) > 0 or len(self.output_files) > 0:
+            if (len(self.caches) > 0 and not self.in_cache()) or len(self.output_files) > 0:
                 specific_out_bytes = self.serializer.dumps(specific_out)
                 m = hashlib.sha256()
                 m.update(specific_out_bytes)
@@ -168,6 +181,30 @@ class Future:
 
     def __repr__(self):
         return f'<Future: {self.hash[:8]}>'
+
+    def __getstate__(self):
+        # NOTE: a future is only pickled/serialized when it is returned by a pipeline 
+
+        if len(self.caches) == 0:
+            raise SerializationError(f'Serializing {repr(self)} ({self.fn}) but there is no cache set')
+
+        # Trigger calculation of _hash and _code_args_hash that we want to serialize
+        self.hash
+
+        # When we pickle a Future (for returning from pipelines), we don't want to pickle the whole graph and
+        # potentially large data, so exclude `bound_args` which may contain futures
+        # Also, the function may not be pickleable, as well as the serializer
+        state = {s: getattr(self, s, None) for s in self.__slots__ if s not in FUTURE_STATE_EXCLUDED}
+
+        state['fn_name'] = self.parent_pipeline.__name__
+        return state
+
+    def __setstate__(self, d):
+        for key, val in d.items():
+            setattr(self, key, val)
+
+        for key in FUTURE_STATE_EXCLUDED:
+            setattr(self, key, None)
 
     def deny_access(self, *args, **kwargs):
         raise FutureAccessError

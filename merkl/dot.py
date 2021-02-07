@@ -14,7 +14,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
         node_id = future.hash[:6]
         code_args_hash = future.code_args_hash[:6] if future.code_args_hash else None
         if not future.is_input and code_args_hash not in printed:
-            fn_name = f'{future.fn.__name__}: {future.fn_code_hash[:4]}'
+            fn_name = f'{future.fn_name}: {future.fn_code_hash[:4]}'
             if future.fn_code_hash not in printed:
                 # Only print a function's deps once, in case of multiple invocations (list may be long)
                 clamped = len(future.deps) > MAX_DEPS + 1

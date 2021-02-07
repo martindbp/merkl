@@ -1,3 +1,5 @@
+Have pipeline be able to yield execution order
+
 Add capability to store result metadata in the cache
     Cache backend gets meta data as well, decides if and how to store it
 
@@ -33,13 +35,6 @@ Have a cache backend that dedupes using content hash.
     Implement SQLite backend, good for small values and links
 
 Make sure functions are executed in the same order as the code
-
-Have a `pipeline` version of the task decorator, which executes the function instead of deferring, and caches the pipeline
-    pipeline can be a alias of task, but with "pipeline" set to True
-    Need to ensure that there are not deeply nested futures in the return values, they need to be top level
-    Need a serializer/deserializer for Future, or is pickle fine? Need to restore the correct cache backend for the
-    future too. When pickled, we may need to include the merkl version number in case the merkl implemetation
-    changed
 
 Provide task wrapper for executing shell commands
     Provide file content and fileobject variants
