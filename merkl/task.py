@@ -62,7 +62,7 @@ def validate_resolve_deps(deps):
 
 
 @doublewrap
-def batch(batch_fn, single_fn=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, serializer=None):
+def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, serializer=None):
     if single_fn:
         if not hasattr(single_fn, 'type') or single_fn.type != 'task':
             raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
@@ -120,7 +120,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FUNCTION, deps=None, cach
 
 
 @doublewrap
-def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, serializer=None):
+def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, serializer=None):
     deps = deps or []
     caches = caches or []
     sig = signature(f)
@@ -193,7 +193,7 @@ def task(f, outs=None, hash_mode=HashMode.FUNCTION, deps=None, caches=None, seri
 
 
 @doublewrap
-def pipeline(f, hash_mode=HashMode.FUNCTION, deps=None, caches=None):
+def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None):
     deps = deps or []
     caches = caches or []
     sig = signature(f)
