@@ -11,34 +11,37 @@ MAX_DEPS = 3
 def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
     # NOTE: This is confusing code, but probably not worth spending time on...
     for future in futures:
-        node_id = future.hash[:6]
-        code_args_hash = future.code_args_hash[:6] if future.code_args_hash else None
+        is_cached_pipeline = future.parent_pipeline_future is not None and len(future.parent_futures()) == 0
+        node_future = future.parent_pipeline_future if is_cached_pipeline else future
+
+        node_id = node_future.hash[:6]
+        code_args_hash = node_future.code_args_hash[:6] if node_future.code_args_hash else None
         if not future.is_input and code_args_hash not in printed:
             fn_name = f'{future.fn_name}: {future.fn_code_hash[:4]}'
-            if future.fn_code_hash not in printed:
+            if node_future.fn_code_hash not in printed:
                 # Only print a function's deps once, in case of multiple invocations (list may be long)
                 clamped = len(future.deps) > MAX_DEPS + 1
-                deps = future.deps
+                deps = node_future.deps
                 if clamped:
                     deps = deps[:MAX_DEPS]
 
-                deps = '|'.join(dep[:MAX_LEN] for dep in deps)
+                deps = '|'.join(name[:MAX_LEN] for name, dep in deps)
                 if clamped:
-                    deps += f'|... +{len(future.deps)-MAX_DEPS}'
+                    deps += f'|... +{len(node_future.deps)-MAX_DEPS}'
 
                 label = fn_name
-                if len(future.deps) > 0:
+                if len(node_future.deps) > 0:
                     label = f'{{{label}|{deps} }}'
 
-                printed.add(future.fn_code_hash)
+                printed.add(node_future.fn_code_hash)
             else:
                 label = fn_name
 
             print(f'\t"fn_{code_args_hash}" [shape=record, label="{label}"];')
             printed.add(code_args_hash)
             args_str = ''
-            if future.bound_args:
-                for key, val in future.bound_args.arguments.items():
+            if node_future.bound_args:
+                for key, val in node_future.bound_args.arguments.items():
                     if len(nested_collect(val, lambda x: isinstance(x, Future))) > 0:
                         continue
 
@@ -78,7 +81,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             print(f'\t"out_{node_id}" -> "fn_{target_fn}"')
             printed.add(edge_name)
 
-        print_dot_graph_nodes(future.parent_futures(), code_args_hash, printed)
+        print_dot_graph_nodes(node_future.parent_futures(), code_args_hash, printed)
 
 
 def print_dot_graph(futures, rankdir=None):

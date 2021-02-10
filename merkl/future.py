@@ -20,12 +20,13 @@ def map_future_to_value(val):
     return val
 
 
-FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'serializer', 'parent_pipeline']
+FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'serializer']
 
 class Future:
     __slots__ = [
         'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', '_caches', 'serializer', 'bound_args',
-        'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline', 'parent_pipeline'
+        'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
+        'parent_pipeline_future',
     ]
 
     def __init__(
@@ -46,7 +47,7 @@ class Future:
         is_pipeline=False,
     ):
         self.fn = fn
-        if hasattr(fn, '__name__'):
+        if fn and hasattr(fn, '__name__'):
             self.fn_name = fn.__name__
         self.fn_code_hash = fn_code_hash
         self.outs = outs
@@ -68,6 +69,7 @@ class Future:
             raise SerializationError(f'No serializer set for future {self}')
 
         self.is_pipeline = is_pipeline
+        self.parent_pipeline_future = None
 
     @property
     def caches(self):
@@ -156,7 +158,7 @@ class Future:
         if self.is_pipeline:
             # Set the pipeline function on all output futures
             for future in nested_collect(outputs, lambda x: isinstance(x, Future)):
-                future.parent_pipeline = self.fn
+                future.parent_pipeline_future = self
 
         specific_out = outputs
         if self.out_name is not None:
@@ -196,7 +198,6 @@ class Future:
         # Also, the function may not be pickleable, as well as the serializer
         state = {s: getattr(self, s, None) for s in self.__slots__ if s not in FUTURE_STATE_EXCLUDED}
 
-        state['fn_name'] = self.parent_pipeline.__name__
         return state
 
     def __setstate__(self, d):

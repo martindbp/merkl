@@ -39,6 +39,12 @@ def validate_outs(outs, sig=None, return_type=None):
 
 
 def validate_resolve_deps(deps):
+    # Collect deps for tasks
+    extra_deps = []
+    for dep in deps:
+        if isfunction(dep) and hasattr(dep, 'type') and dep.type == 'task':
+            extra_deps += dep.deps
+
     for i in range(len(deps)):
         name = None
         dep = deps[i]
@@ -47,9 +53,11 @@ def validate_resolve_deps(deps):
             dep = dep.value
 
         if isfunction(dep):
-            deps[i] = f'<Function "{dep.__name__}: {code_hash(dep)}>'
+            if hasattr(dep, 'type') and dep.type == 'task':
+                dep = dep.__wrapped__
+            deps[i] = f'<Function {dep.__name__}: {code_hash(dep)}>'
         elif ismodule(dep):
-            deps[i] = f'<Module "{dep.__name__}: {code_hash(dep, is_module=True)}>'
+            deps[i] = f'<Module {dep.__name__}: {code_hash(dep, is_module=True)}>'
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
         elif not isinstance(dep, str):
@@ -115,6 +123,9 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
         return outs
 
+    wrap.type = 'batch'
+    wrap.outs = 1
+    wrap.deps = deps
     wrap.__wrapped__ = batch_fn
     return wrap
 
