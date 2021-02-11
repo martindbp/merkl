@@ -11,53 +11,7 @@ In MerkL, pipelines are built using functions decorated with the `task` decorato
 body is not exectuted immediately, but instead `Future` objects are returned in place of real outputs. These can then be
 passed on to other tasks:
 
-<table>
-<tr>
-<th>pipeline1.py</th>
-<th>merkl dot pipeline1.my_pipeline 42 | dot -Tpng | display</th>
-</tr>
-<tr>
-<td valign="top">
-
-```python
-from merkl import task
-
-@task
-def task1(input_value):
-    return 2 * input_value
-
-@task
-def task2(input_value):
-    return input_value ** 2
-
-def my_pipeline(input_value: int):
-    val = task1(input_value)
-    final_val = task2(val)
-    return final_val
-```
-
-</td>
-<td align="center" valign="top">
-
-![](docs/pipeline1.png)
-
-</td>
-
-</tr>
-
-<tr>
-<th colspan="2">merkl run pipeline1.my_pipeline 42</th>
-</tr>
-<tr>
-<td colspan="2" valign="top">
-
-```
-7056
-```
-
-</td>
-<tr>
-</table>
+${TABLE1}
 
 No function body is executed before `.eval()` is called on a Future, or it is returned by a pipeline executed by the `run` command.
 Instead a graph is built and each Future is assigned a hash that uniquely identifies its future value. If the code or input values change, then the
@@ -95,55 +49,7 @@ To set a default cache for all Future values, the `--cache <name>` option can be
 
 Here's a slightly more realistic pipeline consisting of a model training and evaluation task:
 
-<table>
-<tr>
-<th>pipeline2.py</th>
-<th>merkl dot pipeline2.train_eval  | dot -Tpng | display</th>
-</tr>
-<tr>
-<td valign="top">
-
-```python
-from merkl import task, read_future, write_future
-
-@task
-def train(data, iterations):
-    return 'trained model'
-
-@task
-def evaluate(model, data):
-    return 99.3
-
-def train_eval():
-    train_data = read_future('train.csv')
-    test_data = read_future('test.csv')
-    model = train(train_data, iterations=100)
-    score = evaluate(model, test_data)
-    return score, write_future(model, 'model.csv')
-```
-
-</td>
-<td align="center" valign="top">
-
-![](docs/pipeline2.png)
-
-</td>
-
-</tr>
-
-<tr>
-<th colspan="2">merkl run pipeline2.train_eval </th>
-</tr>
-<tr>
-<td colspan="2" valign="top">
-
-```
-(99.3, 'trained model')
-```
-
-</td>
-<tr>
-</table>
+${TABLE2}
 
 This pipeline assumes that `{train,test}.csv` are large files that we don't want to track in git. We can use
 [DVC](http://dvc.org) to track them:

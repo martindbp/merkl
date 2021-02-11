@@ -1,15 +1,12 @@
 from merkl import task, read_future, write_future
 
-
 @task
 def train(data, iterations):
-    return 3
-
+    return 'trained model'
 
 @task
 def evaluate(model, data):
-    return data[:model] 
-
+    return 99.3
 
 def train_eval():
     train_data = read_future('train.csv')
