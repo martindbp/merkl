@@ -194,7 +194,7 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, ser
 
         if is_single:
             return outputs[0]
-        return outputs if return_type == 'Dict' else list(outputs.values())
+        return outputs if return_type == 'Dict' else tuple(outputs.values())
 
     wrap.type = 'task'
     wrap.outs = outs
