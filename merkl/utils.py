@@ -7,6 +7,7 @@ from inspect import isfunction
 from typing import NamedTuple
 from sigtools.specifiers import forwards_to_function
 import merkl
+from merkl.exceptions import TaskOutsError
 
 
 OPERATORS = [
@@ -129,7 +130,10 @@ def get_function_return_info(f):
         if type_name == 'Tuple':
             num_returns.append(len(node.value.elts))
         elif type_name == 'Dict':
-            num_returns.append(tuple([key.s for key in node.value.keys]))
+            try:
+                num_returns.append(tuple([key.s for key in node.value.keys]))
+            except AttributeError:
+                raise TaskOutsError(f'Returned dict literal contains non-string-literal keys')
         else:
             # It it's not tuple, we treat it as a single value
             num_returns.append(1)

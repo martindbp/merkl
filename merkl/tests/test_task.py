@@ -138,6 +138,7 @@ class TestTask(unittest.TestCase):
 
         _task5('test').eval()
 
+        # Test dicts
         @task
         def _task6(input_value):
             return {'out1': 3, 'out2': input_value}
@@ -148,6 +149,13 @@ class TestTask(unittest.TestCase):
         self.assertEqual(set(out.keys()), set(['out1', 'out2']))
         self.assertEqual(out['out1'].eval(), 3)
         self.assertEqual(out['out2'].eval(), 5)
+
+        # Test that dicts with keys that are not string literals fail
+        with self.assertRaises(TaskOutsError):
+            @task
+            def _task7(input_value):
+                key = 'out1'
+                return {key: 3, 'out2': input_value}
 
     def test_pipelines(self):
         @task(outs=lambda input_values: len(input_values))
