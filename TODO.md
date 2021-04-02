@@ -50,6 +50,7 @@ Provide task wrapper for executing shell commands
     Provide paths to named pipes instead of output files for the shell command?
 
 Add type hints / mypy
+    Possible to use mypy as a library to enforce types at runtime when we build the graph?
 
 Idea: A task can be eager or lazy. If eager, we execute right away and put in cache unless
 already in cache. We can also execute it in another process (hence future)

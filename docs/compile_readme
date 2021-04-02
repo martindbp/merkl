@@ -1,6 +1,9 @@
 #! /bin/zsh
 rm -rf .dvc .git
 
+echo "train" > train.csv
+echo "test" > test.csv
+
 git init
 dvc init
 

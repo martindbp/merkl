@@ -51,7 +51,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
                 args_str = args_str.strip()
 
             if args_str:
-                print(f'\t"fn_{code_args_hash}_args" [shape=parallelogram, label="{args_str}"];')
+                print(f'\t"fn_{code_args_hash}_args" [shape=plain, style=solid, label="{args_str}"];')
                 print(f'\t"fn_{code_args_hash}_args" -> "fn_{code_args_hash}";')
 
         if node_id not in printed:
@@ -89,6 +89,7 @@ def print_dot_graph(futures, rankdir=None):
     print('digraph D {')
     if rankdir is not None:
         print(f'\trankdir="{rankdir}";')
-    print('\tnode [shape=plaintext];')
+    print('\tbgcolor="transparent";')
+    print('\tnode [shape=plaintext, fillcolor="white", style=filled];')
     print_dot_graph_nodes(futures, printed=printed)
     print('}')
