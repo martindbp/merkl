@@ -1,5 +1,8 @@
-Scrap non-decorated pipelines? Collect all futures created inside pipeline and execute leafs until none remain, in case
-there are no futures we want to return
+Keep cache/results in a hidden sqlite database. Don't use the equivalent of .dvc files as they clutters the file system,
+instead keep a single ".merklist" file where each line is a file, its merkl hash (and content hash?). Timestamps for
+diffing stored in database
+    Efficient stats of all files with os.scandir
+
 
 Implement find_pip_version()
 

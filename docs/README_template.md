@@ -28,11 +28,17 @@ To set a default cache for all Future values, the `--cache <name>` option can be
 
 <table>
 <tr>
+<th>First run</th>
 <th>Second run</th>
-<th>Modify `task2`</th>
+<th>Modify task2</th>
 </tr>
 
 <tr>
+<td>
+
+![](docs/pipeline1.png)
+
+</td>
 <td>
 
 ![](docs/pipeline1_2.png)
@@ -59,23 +65,24 @@ This pipeline assumes that `{train,test}.csv` are large files that we don't want
 This moves a copy to the `.dvc/cache` folder, creates `{train,test}.csv.dvc` files containing the md5 hash. When a DVC
 file is read in MerkL, only the md5 content hash is used when building the graph, so there is no need to read the large file contents.
 
-## Details
+# Details
 
 That concludes the basic features, here are some of the features explained in more detail.
 
-# Multiple outs
+## Multiple outs
 
-The number of individual outputs that you want to track separately has to be determinable at DAG "build" time,
-therefore it cannot be dependent on some value calculated inside a task.
+The number of outputs that you want to track separately has to be determinable at DAG "build" time,
+therefore it cannot be dependent on some value computed inside a task.
 
-By default, MerkL tries to guess the number of outs by looking at the return statements in the AST (Abstract Syntax Tree) using Python's
-inspection capabilities. If the return statement is a Tuple or Dict literal, the values are split into separate Futures:
+By default, MerkL tries to guess the number of outs by looking at the return statements in the AST (Abstract Syntax
+Tree) using Python's inspection capabilities. If the return statement is a Tuple or Dict literal, the values are split
+into separate Futures:
 
 <table>
 <tr>
-<th>Multiple tuple args</th>
-<th>Single return args</th>
-<th>Multiple dict args</th>
+<th>Tuple multiple outs</th>
+<th>Tuple single out</th>
+<th>Dict multiple outs</th>
 </tr>
 <tr>
 <td valign="top">
@@ -118,6 +125,9 @@ print(my_task())
 </td>
 </tr>
 
+<tr>
+<th colspan="3">STDOUT</th>
+</tr>
 
 <tr>
 <td valign="top">
@@ -156,25 +166,29 @@ In some cases we want the number of outs to be dynamic and depend on the input t
 supply a callable to the `outs` task parameter with the same signature as the task function, and return the number of
 outs:
 
-```python
-@task(outs=lambda data, k: k)
-def kmeans(data, k):
-    ...
-    return clusters
-```
+${TABLE3}
 
 If all else fails, you can set `outs` to any positive integer.
 
-# Pipelines
+## Pipe syntax
 
-Pipeline functions can optionally be decorated with the `pipeline` decorator. There are two benefits of doing this. First, the
-construction of the the pipeline graph itself is cached, and secondly, the function can yield a dynamic execution plan.
+For convenience, you can optionally chain tasks using the `|` operator, if the tasks have a single input and output. A
+future can also be "piped" directly to a file path using the `>` operator:
 
-What would be the benefit of caching the construction of a pipeline if all the task results are already individually cached? Well, there are
-cases where the graph itself would be very big and take some time to construct, such as when you have a pre-processing
-pipeline that loops through thousands of images, preprocesses them and perhaps creates multiple augmentations per image.
-The later inference pipeline depends on the preprocessing and training pipelines, and it would be quite inefficient if
-the whole graph was built for each invocation of the inference function.
+```python
+# Original
+write_future(train(preprocess(read_future('train.csv'))), 'model.bin')
+
+# With pipe syntax
+read_future('train.csv') | preprocess | train > 'model.bin'
+```
+
+## Pipeline decorator
+
+Pipeline functions can optionally be decorated with the `pipeline` decorator. The decorator provides caching of the
+graph construction (as opposed to only the evaluation). This is useful when for example there is an inference stage
+which depends on a training stage which preprocesses thousands of images. Even though the _result_ of the training is
+cached, the _construction_ of the graph may become slow.
 
 ```python
 
@@ -191,11 +205,7 @@ def train(
 
 ```
 
-Cached pipelines
-
-Let's say you have a training pipeline
-
-# Batch tasks
+## Batch tasks
 
 Some functions have a batch version that has a more efficient implementation than the single item version. In this case, we
 might want to track the outputs from the batch task _as if_ they were produced by the single item version, such that
@@ -235,7 +245,7 @@ outs = embed_sentences_task(['my sentence', 'my sentence'])
 assert outs[0].hash != outs[1].hash
 ```
 
-# HashMode and dependencies
+## HashMode and dependencies
 
 When the hash of a task function is determined, there are three different `HashMode`s: `FUNCTION`, `MODULE` and
 `FIND_DEPS`. The default `HashMode` for both `task`, `batch` and `pipeline` is `FIND_DEPS`.

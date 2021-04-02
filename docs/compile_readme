@@ -31,6 +31,17 @@ export FILENAME=pipeline2.py
 export CODE="$(cat $FILENAME)"
 export TABLE2="$(envsubst < table_template.md)"
 
-rm -rf .dvc .git .gitignore .dvcignore train.csv* test.csv* model.csv*
+rm -rf .dvc .git .gitignore .dvcignore train.csv* test.csv* model.bin*
 
+export INPUT=""
+export IMAGE=pipeline3
+export MODULE_FUNCTION=outs_lambda.pipeline
+merkl dot --cache dvc $MODULE_FUNCTION $INPUT | dot -Tpng -o$IMAGE.png
+export OUTPUT="$(merkl run --cache dvc $MODULE_FUNCTION $INPUT)"
+export FILENAME=outs_lambda.py
+export CODE="$(cat $FILENAME)"
+export TABLE3="$(envsubst < table_template.md)"
+
+
+# Make the README file
 envsubst < README_template.md > ../README.md
