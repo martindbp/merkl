@@ -48,6 +48,25 @@ class TestIO(unittest.TestCase):
         with open(self.tmp_file, 'rb') as f:
             self.assertEqual(f.read(), pickle.dumps(b'some data'))
 
+    def test_write_future_pipe_syntax(self):
+        @task
+        def task1():
+            return b'some data2'
+
+        @task
+        def identity(arg):
+            return arg
+
+        out = task1() | identity > self.tmp_file
+        out.eval()
+
+        with open(self.tmp_file, 'rb') as f:
+            self.assertEqual(f.read(), pickle.dumps(b'some data2'))
+
+        # Make types other than strings raises errors
+        with self.assertRaises(TypeError):
+            out = task1() > 3
+
     def test_path_future(self):
         @task
         def task1(path):

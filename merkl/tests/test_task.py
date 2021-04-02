@@ -328,6 +328,19 @@ class TestTask(unittest.TestCase):
         self.assertEqual(fut2.hash, fut1.hash)
         self.assertEqual(fut2.parent_futures(), [])
 
+    def test_pipe_syntax(self):
+        @task
+        def task1():
+            return 1
+
+        @task
+        def task2(arg):
+            return 2*arg
+
+        res1 = task1() | task2
+        res2 = task2(task1())
+        self.assertEqual(res1.hash, res2.hash)
+
 
 if __name__ == '__main__':
     unittest.main()

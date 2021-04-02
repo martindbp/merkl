@@ -1,7 +1,7 @@
 import json
 import hashlib
 import merkl.cache
-from merkl.io import write_track_file
+from merkl.io import write_track_file, write_future
 from merkl.utils import OPERATORS, nested_map, nested_collect
 from merkl.exceptions import *
 
@@ -209,6 +209,18 @@ class Future:
 
     def deny_access(self, *args, **kwargs):
         raise FutureAccessError
+
+    def __or__(self, other):
+        if not hasattr(other, 'is_merkl'):
+            return NotImplemented
+
+        return other(self)
+
+    def __gt__(self, path):
+        if not isinstance(path, str):
+            return NotImplemented
+
+        return write_future(self, path, track=False)
 
 
 # Override all the operators of Future to raise a specific exception when used

@@ -10,9 +10,9 @@ import merkl
 
 
 OPERATORS = [
-    '__bool__', '__not__', '__lt__', '__le__', '__eq__', '__ne__', '__ge__', '__gt__', 'truth', 'is_', 'is_not',
+    '__bool__', '__not__', '__lt__', '__le__', '__eq__', '__ne__', '__ge__', 'truth', 'is_', 'is_not',
     '__abs__', '__add__', '__and__', '__floordiv__', '__index__', '__invert__', '__lshift__', '__mod__', '__mul__',
-    '__matmul__', '__neg__', '__or__', '__pos__', '__pow__', '__rshift__', '__sub__', '__truediv__', '__xor__',
+    '__matmul__', '__neg__', '__pos__', '__pow__', '__rshift__', '__sub__', '__truediv__', '__xor__',
     '__concat__', '__contains__', 'countOf', '__delitem__', '__getitem__', 'indexOf', '__setitem__', 'length_hint',
     '__len__', '__iadd__', '__iand__', '__iconcat__', '__ifloordiv__', '__ilshift__', '__imod__', '__imul__',
     '__imatmul__', '__ior__', '__irshift__', '__ipow__', '__isub__', '__itruediv__', '__ixor__', '__hash__',

@@ -1,10 +1,6 @@
 Scrap non-decorated pipelines? Collect all futures created inside pipeline and execute leafs until none remain, in case
 there are no futures we want to return
 
-Implement the > operator instead of write_future, i.e.
-    future > "myfile.txt"
-    Optionally, use pipe syntax for chaining tasks
-
 Implement find_pip_version()
 
 Make sure batch can take single arguments without putting them in tuples

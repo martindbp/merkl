@@ -42,7 +42,7 @@ def validate_resolve_deps(deps):
     # Collect deps for tasks
     extra_deps = []
     for dep in deps:
-        if isfunction(dep) and hasattr(dep, 'type') and dep.type == 'task':
+        if isfunction(dep) and hasattr(dep, 'is_merkl') and dep.type == 'task':
             extra_deps += dep.deps
 
     for i in range(len(deps)):
@@ -53,7 +53,7 @@ def validate_resolve_deps(deps):
             dep = dep.value
 
         if isfunction(dep):
-            if hasattr(dep, 'type') and dep.type == 'task':
+            if hasattr(dep, 'is_merkl') and dep.type == 'task':
                 dep = dep.__wrapped__
             deps[i] = f'<Function {dep.__name__}: {code_hash(dep)}>'
         elif ismodule(dep):
@@ -72,7 +72,7 @@ def validate_resolve_deps(deps):
 @doublewrap
 def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, serializer=None):
     if single_fn:
-        if not hasattr(single_fn, 'type') or single_fn.type != 'task':
+        if not hasattr(single_fn, 'is_merkl') or single_fn.type != 'task':
             raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
 
         if not isinstance(single_fn.outs, int) or single_fn.outs != 1:
@@ -123,6 +123,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
         return outs
 
+    wrap.is_merkl = True
     wrap.type = 'batch'
     wrap.outs = 1
     wrap.deps = deps
@@ -196,6 +197,7 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, ser
             return outputs[0]
         return outputs if return_type == 'Dict' else tuple(outputs.values())
 
+    wrap.is_merkl = True
     wrap.type = 'task'
     wrap.outs = outs
     wrap.deps = deps
@@ -238,6 +240,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None):
 
         return outs
 
+    wrap.is_merkl = True
     wrap.type = 'pipeline'
     wrap.outs = 1
     wrap.deps = deps
