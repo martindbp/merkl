@@ -4,20 +4,24 @@ from merkl.utils import nested_collect
 from merkl.exceptions import FutureAccessError
 
 
-MAX_LEN = 30
+MAX_LEN = 40
 MAX_DEPS = 3
 
 
 def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
-    # NOTE: This is confusing code, but probably not worth spending time on...
+    # NOTE: This is very bad code, but probably not worth spending time on...
     for future in futures:
         is_cached_pipeline = future.parent_pipeline_future is not None and len(future.parent_futures()) == 0
         node_future = future.parent_pipeline_future if is_cached_pipeline else future
 
-        node_id = node_future.hash[:6]
-        code_args_hash = node_future.code_args_hash[:6] if node_future.code_args_hash else None
+        node_id = f'{future.out_name}_{node_future.hash[:6]}_{node_future.invocation_id}'
+        code_args_hash = None
+        if node_future.code_args_hash:
+            code_args_hash = f'{node_future.code_args_hash}_{node_future.invocation_id}'
         if not future.is_input and code_args_hash not in printed:
             fn_name = f'{future.fn_name}: {future.fn_code_hash[:4]}'
+            if node_future.is_batch:
+                fn_name = f'{future.fn_name} (batch): {future.fn_code_hash[:4]}'
             if node_future.fn_code_hash not in printed:
                 # Only print a function's deps once, in case of multiple invocations (list may be long)
                 clamped = len(future.deps) > MAX_DEPS + 1
@@ -39,20 +43,28 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
 
             print(f'\t"fn_{code_args_hash}" [shape=record, label="{label}"];')
             printed.add(code_args_hash)
-            args_str = ''
-            if node_future.bound_args:
-                for key, val in node_future.bound_args.arguments.items():
-                    if len(nested_collect(val, lambda x: isinstance(x, Future))) > 0:
-                        continue
 
-                    val_str = f"'{val}'" if isinstance(val, str) else str(val)
-                    args_str += (f'{key}={val_str}')[:MAX_LEN] + '\n'
+        args_str = ''
+        if node_future.bound_args:
+            for key, val in node_future.bound_args.arguments.items():
+                if len(nested_collect(val, lambda x: isinstance(x, Future))) > 0:
+                    continue
 
-                args_str = args_str.strip()
+                val_str = f"'{val}'" if isinstance(val, str) else str(val)
+                args_str += (f'{key}={val_str}')[:MAX_LEN] + '\n'
 
-            if args_str:
-                print(f'\t"fn_{code_args_hash}_args" [shape=plain, style=solid, label="{args_str}"];')
-                print(f'\t"fn_{code_args_hash}_args" -> "fn_{code_args_hash}";')
+            args_str = args_str.strip()
+
+        if args_str:
+            args_id = code_args_hash
+            args_label = args_str
+            if node_future.is_batch:
+                args_id = f'{args_id}_{node_future.out_name}'  # out_name is batch index
+                args_label = f'{node_future.out_name}: {args_label}'
+            print(f'\t"fn_{args_id}_args" [shape=plain, style=solid, label="{args_label}"];')
+            if f'{args_id}_{code_args_hash}' not in printed:
+                print(f'\t"fn_{args_id}_args" -> "fn_{code_args_hash}";')
+                printed.add(f'{args_id}_{code_args_hash}')
 
         if node_id not in printed:
             color = 'green' if future.in_cache() else 'red'

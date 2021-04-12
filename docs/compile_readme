@@ -42,6 +42,8 @@ export FILENAME=outs_lambda.py
 export CODE="$(cat $FILENAME)"
 export TABLE3="$(envsubst < table_template.md)"
 
+merkl dot batch.pipeline1 | dot -Tpng -opipeline4_1.png
+merkl dot batch.pipeline2 | dot -Tpng -opipeline4_2.png
 
 # Make the README file
 envsubst < README_template.md > ../README.md

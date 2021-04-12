@@ -2,9 +2,10 @@ Keep cache/results in a hidden sqlite database. Don't use the equivalent of .dvc
 instead keep a single ".merklist" file where each line is a file, its merkl hash (and content hash?). Timestamps for
 diffing stored in database
     Efficient stats of all files with os.scandir
+    Or, put them in the .gitignore so we don't have yet another file, and all the paths need to be there anyway
 
 
-Implement find_pip_version()
+Implement find_pip_version() / pip_version_of('numpy')
 
 Make sure batch can take single arguments without putting them in tuples
 

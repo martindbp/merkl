@@ -10,6 +10,7 @@ from merkl.utils import doublewrap, nested_map, get_function_return_info, find_f
 from merkl.future import Future
 from merkl.exceptions import *
 
+next_invocation_id = 0
 
 class HashMode(Enum):
     MODULE = 1
@@ -85,6 +86,8 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
     @forwards_to_function(batch_fn)
     def wrap(args):
+        global next_invocation_id
+
         if callable(args):
             raise BatchTaskError(f'Function {args} is not decorated as a task')
         elif not isinstance(args, list):
@@ -100,11 +103,19 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
         outs = []
         outs_shared_cache = {}
+        invocation_id = next_invocation_id
         for i, args_tuple in enumerate(args):
             if not isinstance(args_tuple, tuple):
-                raise BatchTaskError(f'Batch arg {args_tuple} is not a tuple')
+                # If single_fn has multiple parameters, then `args_tuple` has to be a tuple
+                if single_fn and len(signature(single_fn).parameters.keys()) != 1:
+                    raise BatchTaskError(f'Batch arg {args_tuple} is not a tuple')
+                else:
+                    args_tuple = (args_tuple,)
 
             out = use_single_fn(*args_tuple)
+            out.is_batch = True
+            # Set the invocation id to the same for all futures
+            out.invocation_id = invocation_id
             # Trigger calculation of the hash, which will be cached
             out.hash
             # Swap out the function for the batch version
@@ -120,6 +131,8 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
             out.out_name = i
 
             outs.append(out)
+
+        next_invocation_id = invocation_id + 1
 
         return outs
 
@@ -163,6 +176,7 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, ser
 
     @forwards_to_function(f)
     def wrap(*args, **kwargs):
+        global next_invocation_id
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
 
@@ -190,8 +204,11 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, ser
                 out_serializer,
                 bound_args,
                 outs_shared_cache,
+                invocation_id=next_invocation_id,
             )
             outputs[out_name] = output
+
+        next_invocation_id += 1
 
         if is_single:
             return outputs[0]
@@ -223,6 +240,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None):
 
     @forwards_to_function(f)
     def wrap(*args, **kwargs):
+        global next_invocation_id
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
 
@@ -236,7 +254,10 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None):
             pickle,
             bound_args,
             is_pipeline=True,
+            invocation_id=next_invocation_id,
         ).eval()
+
+        next_invocation_id += 1
 
         return outs
 

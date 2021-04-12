@@ -160,11 +160,7 @@ This pipeline assumes that `{train,test}.csv` are large files that we don't want
 This moves a copy to the `.dvc/cache` folder, creates `{train,test}.csv.dvc` files containing the md5 hash. When a DVC
 file is read in MerkL, only the md5 content hash is used when building the graph, so there is no need to read the large file contents.
 
-# Details
-
-That concludes the basic features, here are some of the features explained in more detail.
-
-## Multiple outs
+### Multiple outs
 
 The number of outputs that you want to track separately has to be determinable at DAG "build" time,
 therefore it cannot be dependent on some value computed inside a task.
@@ -306,7 +302,7 @@ def pipeline():
 
 If all else fails, you can set `outs` to any positive integer.
 
-## Pipe syntax
+### Pipe syntax
 
 For convenience, you can optionally chain tasks using the `|` operator, if the tasks have a single input and output. A
 future can also be "piped" directly to a file path using the `>` operator:
@@ -319,7 +315,7 @@ write_future(train(preprocess(read_future('train.csv'))), 'model.bin')
 read_future('train.csv') | preprocess | train > 'model.bin'
 ```
 
-## Pipeline decorator
+### Pipeline decorator
 
 Pipeline functions can optionally be decorated with the `pipeline` decorator. The decorator provides caching of the
 graph construction (as opposed to only the evaluation). This is useful when for example there is an inference stage
@@ -341,22 +337,17 @@ def train(
 
 ```
 
-## Batch tasks
+### Batch tasks
 
 Some functions have a batch version that has a more efficient implementation than the single item version. In this case, we
 might want to track the outputs from the batch task _as if_ they were produced by the single item version, such that
 outputs between them will be cached. In this case you can use the `batch` decorator:
 
 ```python
-@task
-def embed_sentence(sentence):
-    ...
-    return embedded_sentence
-
-@batch(embed_sentence)
-def embed_sentences(sentences):
-    ...
-    return embedded_sentences
+@batch(embed_word)
+def embed_words(words):
+    [...]
+    return embedded_words
 ```
 
 In some cases, you might only have a batch implementation, but you want each output to be treated individually. In that
@@ -365,13 +356,34 @@ case you can also use the `batch` decorator but without an argument:
 ```python
 
 @batch
-def embed_sentences(sentences):
-    ...
-    return embedded_sentences
+def embed_words(words):
+    [...]
+    return embedded_words
 
 ```
 The difference here is that identical inputs will have the same output Future hash, which is not true for a regular
-task:
+task. You can tell the difference in these two graphs:
+
+<table>
+<tr>
+<th>1</th>
+<th>2</th>
+</tr>
+<tr>
+<td valign="top">
+
+![](docs/pipeline4_1.png)
+
+</td>
+<td valign="top">
+
+![](docs/pipeline4_2.png)
+
+</td>
+</tr>
+
+</table>
+
 
 ```python
 outs = embed_sentences_batch(['my sentence', 'my sentence'])
@@ -381,7 +393,7 @@ outs = embed_sentences_task(['my sentence', 'my sentence'])
 assert outs[0].hash != outs[1].hash
 ```
 
-## HashMode and dependencies
+### HashMode and dependencies
 
 When the hash of a task function is determined, there are three different `HashMode`s: `FUNCTION`, `MODULE` and
 `FIND_DEPS`. The default `HashMode` for both `task`, `batch` and `pipeline` is `FIND_DEPS`.
@@ -406,3 +418,5 @@ As a convenience, you can use the `find_pip_version()` function to easily add a 
 def my_task():
     pass
 ```
+
+### Fine-grained caching control

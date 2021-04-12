@@ -277,10 +277,7 @@ class TestTask(unittest.TestCase):
         with self.assertRaises(BatchTaskError):
             embed_bert_batch('test1')  # not a list
 
-        with self.assertRaises(BatchTaskError):
-            embed_bert_batch(['test1', 'test2'])  # not tuples
-
-        batch_outs = embed_bert_batch([('test1',), ('test2',), ('test3',), ('test1',)])
+        batch_outs = embed_bert_batch(['test1', 'test2', 'test3', 'test1'])
         single_outs = [embed_bert(arg) for arg in ['test1', 'test2', 'test3', 'test1']]
         for single_out, batch_out in zip(single_outs[:-1], batch_outs[:-1]):
             self.assertEqual(single_out.hash, batch_out.hash)
@@ -297,7 +294,7 @@ class TestTask(unittest.TestCase):
             called += 1
             return [_embed_bert(arg) for arg in args]
 
-        batch_outs_without_single = embed_bert_without_single([('test1',), ('test2',), ('test3',), ('test1',)])
+        batch_outs_without_single = embed_bert_without_single(['test1', 'test2', 'test3', 'test1'])
         for batch_out, batch_out_without_single in zip(batch_outs, batch_outs_without_single):
             self.assertNotEqual(batch_out.hash, batch_out_without_single.hash)
             self.assertEqual(batch_out_without_single.eval(), batch_out.eval())
