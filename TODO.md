@@ -1,3 +1,10 @@
+When calling batch task, don't evaluate cached results
+
+Ability to make functions out of bash commands e.g:
+```
+resize_image = bash_task('imagmagick resize {file_arg('input_file', '.png')} {out_file_arg('output_file', '.png')} --size {arg('input_size')}')
+```
+
 Keep cache/results in a hidden sqlite database. Don't use the equivalent of .dvc files as they clutters the file system,
 instead keep a single ".merklist" file where each line is a file, its merkl hash (and content hash?). Timestamps for
 diffing stored in database

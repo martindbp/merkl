@@ -82,6 +82,10 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
     if not isinstance(hash_mode, HashMode):
         raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
 
+    batch_fn_sig = signature(batch_fn)
+    if set(batch_fn_sig.parameters.keys()) != {'args'}:
+        raise BatchTaskError(f'Batch function {batch_fn} must have exactly one input arg named "args"')
+
     batch_fn_code_hash = code_hash(batch_fn, True)
 
     @forwards_to_function(batch_fn)
@@ -120,6 +124,9 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
             out.hash
             # Swap out the function for the batch version
             out.fn = batch_fn
+            # Swap out the args to the list of batch args
+            batch_bound_args = batch_fn_sig.bind(args)
+            out.bound_args = batch_bound_args
             # Swap out code_args_hash to the batch_fn code hash, so
             # that the the value can be taken out of the shared cache
             # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to

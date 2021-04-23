@@ -146,7 +146,7 @@ class TestTask(unittest.TestCase):
         out = _task6(5)
         self.assertTrue(isinstance(out, dict))
         self.assertEqual(len(out), 2)
-        self.assertEqual(set(out.keys()), set(['out1', 'out2']))
+        self.assertEqual(set(out.keys()), {'out1', 'out2'})
         self.assertEqual(out['out1'].eval(), 3)
         self.assertEqual(out['out2'].eval(), 5)
 
@@ -262,6 +262,11 @@ class TestTask(unittest.TestCase):
             # `fun3` has more than one return value
             @batch(fun3)
             def fun4(args):
+                pass
+
+        with self.assertRaises(BatchTaskError):
+            @batch(fun3)
+            def fun4(args, other_arg):
                 pass
 
         _embed_bert = embed_bert.__wrapped__

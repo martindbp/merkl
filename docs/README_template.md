@@ -1,9 +1,7 @@
-# MerkL - create flexible ML pipelines with deep and fine-grained caching
+# MerkL - flexible ML pipelines in Python with great caching
 
 MerkL is a tool for creating ML pipelines in pure Python that are useful for development and experimentation, but also
-easy to deploy to production without modifications. Results are cached using Merkle hashes of the code and puts as keys. 
-MerkL can be used in conjunction with tools like git-lfs or [DVC](http://dvc.org) to store and track large files such 
-as training data and models in version control.
+easy to deploy to production without modifications. Results are cached using Merkle hashes of the code and inputs as keys.
 
 ## Tour and examples
 
@@ -24,7 +22,9 @@ through the `dot` and `visualize` programs (note that these require that graphvi
 Arguments can be passed to the pipeline through the `run` command. See [clize](https://clize.readthedocs.io/en/stable/)
 for more information on how to pass parameters from the command line.
 
-To set a default cache for all Future values, the `--cache <name>` option can be supplied (here we use the DVC cache). If we run the pipeline twice with this parameter, the values will now be cached, which is indicated by green hashes in the graph. Changing the code in `task2`, for example by changing the `2` to a `3`, we can see that the output value is not cached anymore:
+To specify that results should be cached, `--cache` option can be supplied. If we run the pipeline twice with this parameter, the values will now be cached,
+which is indicated by green hashes in the graph. Changing the code in `task2`, for example by changing the `2` to a `3`, we can see that the output value is
+not cached anymore:
 
 <table>
 <tr>
@@ -57,13 +57,14 @@ Here's a slightly more realistic pipeline consisting of a model training and eva
 
 ${TABLE2}
 
-This pipeline assumes that `{train,test}.csv` are large files that we don't want to track in git. We can use
-[DVC](http://dvc.org) to track them:
+### Hashing
 
-`$ dvc add train.csv test.csv`
+In order to compute the recursive Merkle hashes, the content (md5) hash of the
+input files are needed. MerkL hashes these on demand as they are needed, but
+stores these hashes in the .merkl/cache.sqlite3 database. If the timestamp of
+the file ever changes, the file is hashed again.
 
-This moves a copy to the `.dvc/cache` folder, creates `{train,test}.csv.dvc` files containing the md5 hash. When a DVC
-file is read in MerkL, only the md5 content hash is used when building the graph, so there is no need to read the large file contents.
+For files with exif metadata like jpg and png images, the md5 content hash can be stored
 
 ### Multiple outs
 

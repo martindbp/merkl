@@ -2,9 +2,9 @@ from merkl import task
 
 @task
 def embed_bert(sentence):
-    return [1, 2]
+    return [sentence[0], sentence[-1]]
 
 
 @task
 def embed_bert_large(sentence):
-    return [1, 2, 3]
+    return [sentence[0], sentence[-1], len(sentence)]
