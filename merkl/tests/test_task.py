@@ -272,11 +272,13 @@ class TestTask(unittest.TestCase):
         _embed_bert = embed_bert.__wrapped__
 
         called = 0
+        num_inputs = None
 
-        @batch(embed_bert)
+        @batch(embed_bert, caches=[InMemoryCache])
         def embed_bert_batch(args):
-            nonlocal called
+            nonlocal called, num_inputs
             called += 1
+            num_inputs = len(args)
             return [_embed_bert(arg) for arg in args]
 
         with self.assertRaises(BatchTaskError):
@@ -290,6 +292,19 @@ class TestTask(unittest.TestCase):
 
         self.assertEqual(batch_outs[0].hash, batch_outs[-1].hash)
         self.assertEqual(called, 1)
+        self.assertEqual(num_inputs, 4)
+
+        num_inputs = None
+        called = 0
+        batch_outs = embed_bert_batch(['test1', 'test2', 'test3', 'test1', 'test4'])
+        for out in batch_outs:
+            res = out.eval()
+
+        # This tests is for a bug that happened in caching
+        self.assertEqual(batch_outs[0].eval(), ['t', '1'])
+
+        self.assertEqual(called, 1)
+        self.assertEqual(num_inputs, 1)
 
         called = 0
 

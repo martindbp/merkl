@@ -107,8 +107,10 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
         outs = []
         outs_shared_cache = {}
+        non_cached_outs_args = []
         invocation_id = next_invocation_id
         for i, args_tuple in enumerate(args):
+            orig_args_tuple = args_tuple
             if not isinstance(args_tuple, tuple):
                 # If single_fn has multiple parameters, then `args_tuple` has to be a tuple
                 if single_fn and len(signature(single_fn).parameters.keys()) != 1:
@@ -124,20 +126,30 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
             out.hash
             # Swap out the function for the batch version
             out.fn = batch_fn
-            # Swap out the args to the list of batch args
-            batch_bound_args = batch_fn_sig.bind(args)
-            out.bound_args = batch_bound_args
             # Swap out code_args_hash to the batch_fn code hash, so
             # that the the value can be taken out of the shared cache
             # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to
             # store the output temporarily
             out._code_args_hash = batch_fn_code_hash
-            # Need to set the shared cache to be shared across all batch invocations
-            out.outs_shared_cache = outs_shared_cache
-            # Change the out name to point to the batch index
-            out.out_name = i
+            # Override caches
+            if caches:
+                out._caches = caches
 
             outs.append(out)
+
+            if not out.in_cache():
+                # Need to set the shared cache to be shared across all batch invocations
+                # NOTE: important only share this cache for outs that are not already in cache
+                out.outs_shared_cache = outs_shared_cache
+
+                non_cached_outs_args.append((out, orig_args_tuple))
+
+        # Swap out the args to the final list of batch args
+        batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args])
+        for i, (out, args) in enumerate(non_cached_outs_args):
+            out.bound_args = batch_bound_args
+            # Change the out name to point to the batch index
+            out.out_name = i
 
         next_invocation_id = invocation_id + 1
 
