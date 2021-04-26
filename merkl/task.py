@@ -212,6 +212,8 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, ser
                 out_serializer = pickle
             elif isinstance(serializer, dict):
                 out_serializer = serializer[out_name]
+            else:
+                out_serializer = serializer
 
             output = Future(
                 f,

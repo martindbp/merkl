@@ -1,3 +1,5 @@
+Add `defer` function from inside a task to run a piece of code after results have been persisted
+
 When calling batch task, don't evaluate cached results
 
 Ability to make functions out of bash commands e.g:
@@ -13,10 +15,6 @@ diffing stored in database
 
 
 Implement find_pip_version() / pip_version_of('numpy')
-
-Make sure batch can take single arguments without putting them in tuples
-
-Use git library to read git hashes as an alternative to DVC
 
 Have pipeline be able to yield execution order
 

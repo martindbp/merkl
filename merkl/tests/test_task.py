@@ -1,3 +1,4 @@
+import os
 import sys
 import unittest
 from io import StringIO
@@ -5,7 +6,7 @@ from io import StringIO
 from merkl.tests.tasks.embed_bert import embed_bert, embed_bert_large
 from merkl.tests.tasks.embed_elmo import embed_elmo
 from merkl.tests.tasks.find_deps_test import my_task
-from merkl.future import Future
+from merkl.future import Future, defer
 from merkl.task import task, batch, pipeline, HashMode
 from merkl.exceptions import *
 from merkl.cache import InMemoryCache
@@ -365,6 +366,30 @@ class TestTask(unittest.TestCase):
         res1 = task1() | task2
         res2 = task2(task1())
         self.assertEqual(res1.hash, res2.hash)
+
+    def test_defer(self):
+
+        class FakeSerializer:
+            called = []
+
+            @classmethod
+            def dumps(cls, s):
+                cls.called.append('serializer')
+                return s
+
+
+        @task(serializer=FakeSerializer, caches=[InMemoryCache])
+        def my_defer_task():
+            def _defer_fn():
+                FakeSerializer.called.append('defer')
+
+            defer(_defer_fn)
+            return b'some bytes'
+
+        res = my_defer_task().eval()
+        self.assertEqual(res, b'some bytes')
+        # Serializer should have been called first
+        self.assertTrue(FakeSerializer.called == ['serializer', 'defer'])
 
 
 if __name__ == '__main__':

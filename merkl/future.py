@@ -1,5 +1,6 @@
 import json
 import hashlib
+from collections import defaultdict
 import merkl.cache
 from merkl.io import write_track_file, write_future
 from merkl.utils import OPERATORS, nested_map, nested_collect
@@ -18,6 +19,30 @@ def map_future_to_value(val):
     if isinstance(val, Future):
         return val.eval()
     return val
+
+
+"""
+The defer function can be used from inside a task to make sure a function in called after any results have been persisted, e.g:
+
+@task
+def my_task():
+    f = open('tempfile.txt', 'w')
+    f.write('hello world\n')
+
+    def _close_remove():
+        f.close()
+        os.remove('tempfile.txt')
+
+    defer(_close_remove)
+    return f  # contents will be read from `f` and cached
+
+"""
+DEFER = defaultdict(list)
+def defer(f):
+    global DEFER
+    from merkl.task import next_invocation_id
+    current_invocation_id = next_invocation_id - 1
+    DEFER[current_invocation_id].append(f)
 
 
 FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'serializer']
@@ -141,6 +166,9 @@ class Future:
                 return self.serializer.loads(val)
 
     def eval(self):
+        global DEFER
+        assert len(DEFER.get(self.invocation_id, [])) == 0
+
         specific_out = None
         if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
             outputs = self.outs_shared_cache.get(self.code_args_hash)
@@ -157,7 +185,6 @@ class Future:
             raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
         elif isinstance(outputs, dict) and len(outputs) != len(self.outs):
             raise TaskOutsError('Wrong number of outputs: {len(outputs)}. Expected {len(self.outs)}')
-
 
         if self.is_pipeline:
             # Set the pipeline function on all output futures
@@ -182,6 +209,11 @@ class Future:
                 for cache in self.caches:
                     if not cache.has(self.hash):
                         cache.add(content_hash, self.hash, specific_out_bytes)
+
+        for defer_fn in DEFER[self.invocation_id]:
+            defer_fn()
+
+        del DEFER[self.invocation_id]
 
         return specific_out
 
