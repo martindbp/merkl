@@ -256,16 +256,12 @@ class TestTask(unittest.TestCase):
             def fun2(args):
                 pass
 
+        @task
         def fun3(arg):
             return 1, 3
 
         with self.assertRaises(BatchTaskError):
-            # `fun3` has more than one return value
-            @batch(fun3)
-            def fun4(args):
-                pass
-
-        with self.assertRaises(BatchTaskError):
+            # batch function should only have a 'args' argument
             @batch(fun3)
             def fun4(args, other_arg):
                 pass
@@ -309,7 +305,11 @@ class TestTask(unittest.TestCase):
 
         called = 0
 
-        @batch
+        @task(outs=1)
+        def single(inpt):
+            raise NotImplementedError
+
+        @batch(single)
         def embed_bert_without_single(args):
             nonlocal called
             called += 1
@@ -321,6 +321,32 @@ class TestTask(unittest.TestCase):
             self.assertEqual(batch_out_without_single.eval(), batch_out.eval())
 
         self.assertEqual(called, 1)
+
+        @task
+        def single_multiple_outs(arg1, arg2):
+            return (arg1*2, arg2*3)
+
+        @batch(single_multiple_outs)
+        def batch_with_multiple_outs(args):
+            return [(arg1*2, arg2*3) for arg1, arg2 in args]
+
+        outs = batch_with_multiple_outs([(1,2), (2,3), (3,4), (1,2)])
+        self.assertEqual(outs[0][0].hash, outs[-1][0].hash)
+        self.assertEqual(outs[0][1].hash, outs[-1][1].hash)
+
+        self.assertEqual(outs[0][0].eval(), outs[-1][0].eval())
+
+        @task
+        def single_one_arg(arg):
+            return (arg*2, arg2*3)
+
+        @batch(single_one_arg)
+        def batch_two_args(args):
+            return [(arg1*2, arg2*3) for arg1, arg2 in args]
+
+        with self.assertRaises(TypeError):
+            batch_two_args([(1,2), (2,3)])
+
 
     def test_pipelines(self):
         @task

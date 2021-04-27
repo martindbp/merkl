@@ -51,7 +51,7 @@ class Future:
     __slots__ = [
         'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', '_caches', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
-        'parent_pipeline_future', 'invocation_id', 'is_batch',
+        'parent_pipeline_future', 'invocation_id', 'batch_idx',
     ]
 
     def __init__(
@@ -71,7 +71,7 @@ class Future:
         output_files=None,
         is_pipeline=False,
         invocation_id=-1,
-        is_batch=False,
+        batch_idx=None,
     ):
         self.fn = fn
         if fn and hasattr(fn, '__name__'):
@@ -98,7 +98,7 @@ class Future:
         self.is_pipeline = is_pipeline
         self.parent_pipeline_future = None
         self.invocation_id = invocation_id
-        self.is_batch = is_batch
+        self.batch_idx = batch_idx
 
     @property
     def caches(self):
@@ -170,8 +170,10 @@ class Future:
         assert len(DEFER.get(self.invocation_id, [])) == 0
 
         specific_out = None
+        use_batch_idx = False
         if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
             outputs = self.outs_shared_cache.get(self.code_args_hash)
+            use_batch_idx = self.batch_idx is not None
         elif self.in_cache():
             outputs = self.get_cache()
         else:
@@ -180,6 +182,11 @@ class Future:
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
+            use_batch_idx = self.batch_idx is not None
+
+        if use_batch_idx:
+            # If result is calculated in batch function, get the right index
+            outputs = outputs[self.batch_idx]
 
         if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
             raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')

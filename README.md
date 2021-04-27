@@ -350,19 +350,20 @@ def embed_words(words):
     return embedded_words
 ```
 
-In some cases, you might only have a batch implementation, but you want each output to be treated individually. In that
-case you can also use the `batch` decorator but without an argument:
+If there is no "single" version of the function, you can define one without an implementation:
 
 ```python
+@task(outs=1)
+def embed_word(word):
+    raise NotImplementedError
 
-@batch
+@batch(embed_word)
 def embed_words(words):
     [...]
     return embedded_words
-
 ```
-The difference here is that identical inputs will have the same output Future hash, which is not true for a regular
-task. You can tell the difference in these two graphs:
+
+The difference between a `task` and a `batch` task is that identical inputs will have the same output Future hash for batch functions, which is not true for a regular tasks. You can tell the difference in these two graphs:
 
 <table>
 <tr>

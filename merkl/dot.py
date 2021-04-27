@@ -20,7 +20,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             code_args_hash = f'{node_future.code_args_hash}_{node_future.invocation_id}'
         if not future.is_input and code_args_hash not in printed:
             fn_name = f'{future.fn_name}: {future.fn_code_hash[:4]}'
-            if node_future.is_batch:
+            if node_future.batch_idx is not None:
                 fn_name = f'{future.fn_name} (batch): {future.fn_code_hash[:4]}'
             if node_future.fn_code_hash not in printed:
                 # Only print a function's deps once, in case of multiple invocations (list may be long)
@@ -58,7 +58,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
         if args_str:
             args_id = code_args_hash
             args_label = args_str
-            if node_future.is_batch:
+            if node_future.batch_idx is not None:
                 args_id = f'{args_id}_{node_future.out_name}'  # out_name is batch index
                 args_label = f'{node_future.out_name}: {args_label}'
             print(f'\t"fn_{args_id}_args" [shape=plain, style=solid, label="{args_label}"];')

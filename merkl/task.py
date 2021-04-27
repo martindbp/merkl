@@ -6,7 +6,14 @@ from enum import Enum
 from functools import lru_cache
 from sigtools.specifiers import forwards_to_function
 from inspect import signature, getsource, isfunction, ismodule, getmodule
-from merkl.utils import doublewrap, nested_map, get_function_return_info, find_function_deps, FunctionDep
+from merkl.utils import (
+    doublewrap,
+    nested_map,
+    nested_collect,
+    get_function_return_info,
+    find_function_deps,
+    FunctionDep,
+)
 from merkl.future import Future
 from merkl.exceptions import *
 
@@ -72,12 +79,11 @@ def validate_resolve_deps(deps):
 
 @doublewrap
 def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, serializer=None):
-    if single_fn:
-        if not hasattr(single_fn, 'is_merkl') or single_fn.type != 'task':
-            raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
+    if single_fn is None:
+        raise BatchTaskError(f"'single_fn' has to be supplied")
 
-        if not isinstance(single_fn.outs, int) or single_fn.outs != 1:
-            raise BatchTaskError(f'Function {single_fn} must have exactly one out')
+    if not hasattr(single_fn, 'is_merkl') or single_fn.type != 'task':
+        raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
 
     if not isinstance(hash_mode, HashMode):
         raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
@@ -97,59 +103,58 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
         elif not isinstance(args, list):
             raise BatchTaskError(f'Batch args {args} is not a list')
 
-        # Validate that args is a list of tuples, or single_fn has single input
-
-        use_single_fn = single_fn
-        if single_fn is None:
-            # Create a single-out version of the batch function. This will be used to create the future, but
-            # `batch_fn` will be used to do the actual calculation
-            use_single_fn = task(1, hash_mode, deps, caches, serializer)(batch_fn)
-
         outs = []
         outs_shared_cache = {}
         non_cached_outs_args = []
         invocation_id = next_invocation_id
         for i, args_tuple in enumerate(args):
             orig_args_tuple = args_tuple
+            # Validate that args is a list of tuples, or single_fn has single input
             if not isinstance(args_tuple, tuple):
                 # If single_fn has multiple parameters, then `args_tuple` has to be a tuple
-                if single_fn and len(signature(single_fn).parameters.keys()) != 1:
+                if len(signature(single_fn).parameters.keys()) != 1:
                     raise BatchTaskError(f'Batch arg {args_tuple} is not a tuple')
                 else:
                     args_tuple = (args_tuple,)
 
-            out = use_single_fn(*args_tuple)
-            out.is_batch = True
-            # Set the invocation id to the same for all futures
-            out.invocation_id = invocation_id
-            # Trigger calculation of the hash, which will be cached
-            out.hash
-            # Swap out the function for the batch version
-            out.fn = batch_fn
-            # Swap out code_args_hash to the batch_fn code hash, so
-            # that the the value can be taken out of the shared cache
-            # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to
-            # store the output temporarily
-            out._code_args_hash = batch_fn_code_hash
-            # Override caches
-            if caches:
-                out._caches = caches
+            out = single_fn(*args_tuple)
+
+            is_cached = False
+            for specific_out in nested_collect(out, lambda x: isinstance(x, Future)):
+                # Set the invocation id to the same for all futures
+                specific_out.invocation_id = invocation_id
+                # Trigger calculation of the hash, which will be cached
+                specific_out.hash
+                # Swap out the function for the batch version
+                specific_out.fn = batch_fn
+                # Swap out code_args_hash to the batch_fn code hash, so
+                # that the the value can be taken out of the shared cache
+                # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to
+                # Store the output temporarily
+                specific_out._code_args_hash = batch_fn_code_hash
+
+                # Override caches
+                if caches:
+                    specific_out._caches = caches
+
+                is_cached = is_cached or specific_out.in_cache()
+                if not is_cached:
+                    # Need to set the shared cache to be shared across all batch invocations
+                    # NOTE: important only share this cache for outs that are not already in cache
+                    specific_out.outs_shared_cache = outs_shared_cache
 
             outs.append(out)
 
-            if not out.in_cache():
-                # Need to set the shared cache to be shared across all batch invocations
-                # NOTE: important only share this cache for outs that are not already in cache
-                out.outs_shared_cache = outs_shared_cache
-
+            if not is_cached:
                 non_cached_outs_args.append((out, orig_args_tuple))
 
-        # Swap out the args to the final list of batch args
+        # Swap out the args to the final list of batch args with non-cached results
         batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args])
         for i, (out, args) in enumerate(non_cached_outs_args):
-            out.bound_args = batch_bound_args
-            # Change the out name to point to the batch index
-            out.out_name = i
+            for specific_out in nested_collect(out, lambda x: isinstance(x, Future)):
+                specific_out.bound_args = batch_bound_args
+                # Store the batch index from where the out should pick its results
+                specific_out.batch_idx = i
 
         next_invocation_id = invocation_id + 1
 
@@ -164,10 +169,10 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
 
 @doublewrap
-def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, serializer=None):
+def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, serializer=None, sig=None):
     deps = deps or []
     caches = caches or []
-    sig = signature(f)
+    sig = sig if sig else signature(f)
 
     return_type = None
     if outs is not None:
