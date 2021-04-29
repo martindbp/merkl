@@ -16,6 +16,7 @@ from merkl.utils import (
 )
 from merkl.future import Future
 from merkl.exceptions import *
+from merkl.cache import SqliteCache
 
 next_invocation_id = 0
 
@@ -78,7 +79,7 @@ def validate_resolve_deps(deps):
 
 
 @doublewrap
-def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, serializer=None):
+def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, serializer=None):
     if single_fn is None:
         raise BatchTaskError(f"'single_fn' has to be supplied")
 
@@ -133,9 +134,9 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
                 # Store the output temporarily
                 specific_out._code_args_hash = batch_fn_code_hash
 
-                # Override caches
-                if caches:
-                    specific_out._caches = caches
+                # Override cache
+                if cache:
+                    specific_out._cache = cache
 
                 is_cached = is_cached or specific_out.in_cache()
                 if not is_cached:
@@ -169,9 +170,8 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
 
 @doublewrap
-def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, serializer=None, sig=None):
+def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, serializer=None, sig=None):
     deps = deps or []
-    caches = caches or []
     sig = sig if sig else signature(f)
 
     return_type = None
@@ -226,7 +226,7 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, ser
                 resolved_outs,
                 None if is_single else out_name,
                 deps,
-                caches,
+                cache,
                 out_serializer,
                 bound_args,
                 outs_shared_cache,
@@ -249,9 +249,8 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None, ser
 
 
 @doublewrap
-def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None):
+def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
     deps = deps or []
-    caches = caches or []
     sig = signature(f)
 
     if not isinstance(hash_mode, HashMode):
@@ -276,7 +275,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, caches=None):
             1,
             None,
             deps,
-            caches,
+            cache,
             pickle,
             bound_args,
             is_pipeline=True,

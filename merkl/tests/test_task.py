@@ -1,15 +1,15 @@
-import os
 import sys
 import unittest
 from io import StringIO
 
+import merkl
 from merkl.tests.tasks.embed_bert import embed_bert, embed_bert_large
 from merkl.tests.tasks.embed_elmo import embed_elmo
 from merkl.tests.tasks.find_deps_test import my_task
+from merkl.tests import TestCaseWithMerklRepo
 from merkl.future import Future, defer
 from merkl.task import task, batch, pipeline, HashMode
 from merkl.exceptions import *
-from merkl.cache import InMemoryCache
 
 
 def get_stderr(f):
@@ -26,7 +26,13 @@ def get_stderr(f):
     return out, err_output
 
 
-class TestTask(unittest.TestCase):
+class TestTask(TestCaseWithMerklRepo):
+    def setUp(self):
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+
     def test_task_hashing(self):
         # Test that hash is the same every time
         self.assertEqual(embed_bert('sentence').hash, embed_bert('sentence').hash)
@@ -261,7 +267,7 @@ class TestTask(unittest.TestCase):
             return 1, 3
 
         with self.assertRaises(BatchTaskError):
-            # batch function should only have a 'args' argument
+            # batch function should only have an 'args' argument
             @batch(fun3)
             def fun4(args, other_arg):
                 pass
@@ -271,7 +277,7 @@ class TestTask(unittest.TestCase):
         called = 0
         num_inputs = None
 
-        @batch(embed_bert, caches=[InMemoryCache])
+        @batch(embed_bert)
         def embed_bert_batch(args):
             nonlocal called, num_inputs
             called += 1
@@ -281,19 +287,26 @@ class TestTask(unittest.TestCase):
         with self.assertRaises(BatchTaskError):
             embed_bert_batch('test1')  # not a list
 
-        batch_outs = embed_bert_batch(['test1', 'test2', 'test3', 'test1'])
+        batch_outs = embed_bert_batch(['test1', 'test2', 'test3', 'test1', 'test4', 'test5'])
         single_outs = [embed_bert(arg) for arg in ['test1', 'test2', 'test3', 'test1']]
         for single_out, batch_out in zip(single_outs[:-1], batch_outs[:-1]):
             self.assertEqual(single_out.hash, batch_out.hash)
             self.assertEqual(single_out.eval(), batch_out.eval())
 
-        self.assertEqual(batch_outs[0].hash, batch_outs[-1].hash)
+        self.assertEqual(batch_outs[0].hash, batch_outs[-3].hash)
+        # test1-3 should have been cached from the evaluation of the single function
+        self.assertEqual(called, 0)
+        self.assertEqual(num_inputs, None)
+
+        # Now if we evaluate test5, it should be called
+        batch_outs = embed_bert_batch(['test1', 'test2', 'test3', 'test1', 'test4', 'test5'])
+        batch_outs[-1].eval()
         self.assertEqual(called, 1)
-        self.assertEqual(num_inputs, 4)
+        self.assertEqual(num_inputs, 2)
 
         num_inputs = None
         called = 0
-        batch_outs = embed_bert_batch(['test1', 'test2', 'test3', 'test1', 'test4'])
+        batch_outs = embed_bert_batch(['test1', 'test2', 'test3', 'test1', 'test6'])
         for out in batch_outs:
             res = out.eval()
 
@@ -349,7 +362,7 @@ class TestTask(unittest.TestCase):
 
 
     def test_pipelines(self):
-        @task
+        @task(cache=None)
         def my_task(k):
             return k*k
 
@@ -357,17 +370,17 @@ class TestTask(unittest.TestCase):
             # my_task has no cache set, so caching the pipeline result
             # would not cache the nested Future result
 
-            @pipeline(caches=[InMemoryCache])
+            @pipeline
             def my_pipeline(i):
                 return my_task(i)
 
             my_pipeline(3)
 
-        @task(caches=[InMemoryCache])
+        @task
         def my_other_task(m):
             return m ** 2
 
-        @pipeline(caches=[InMemoryCache])
+        @pipeline
         def my_pipeline(i):
             return my_other_task(my_task(i))
 
@@ -404,7 +417,7 @@ class TestTask(unittest.TestCase):
                 return s
 
 
-        @task(serializer=FakeSerializer, caches=[InMemoryCache])
+        @task(serializer=FakeSerializer)
         def my_defer_task():
             def _defer_fn():
                 FakeSerializer.called.append('defer')

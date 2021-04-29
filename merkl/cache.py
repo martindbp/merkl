@@ -1,85 +1,85 @@
 import os
+import sqlite3
 from typing import NamedTuple
 
-cache_override = 0  # 0 means no cache override
 
-IN_MEMORY_CACHE = {}
-
-def cache_dir_path(hash, cwd=''):
-    return f'{cwd}.dvc/cache/{hash[:2]}'
+def get_merkl_path():
+    from merkl.io import cwd
+    return f'{cwd}.merkl/'
 
 
-def cache_file_path(hash, cwd=''):
-    return f'{cache_dir_path(hash, cwd)}/{hash[2:]}'
+def get_db_path():
+    return f'{get_merkl_path()}cache.sqlite3'
 
 
-def get_cache_from_arg(arg):
-    if arg is not None:
-        if arg == 'dvc':
-            return DVCFileCache
-        else:
-            return InMemoryCache
-
-
-class ContentHash(NamedTuple):
-    hash: str
-
-
-class CacheOverride:
-    def __init__(self, cache):
-        self.cache = cache
-
-    def __enter__(self, *args, **kwargs):
-        global cache_override
-        if self.cache is not None:
-            cache_override = self.cache
-
-    def __exit__(self, *args, **kwargs):
-        global cache_override
-        if self.cache is not None:
-            cache_override = 0
-
-
-class InMemoryCache:
-    @classmethod
-    def add(cls, content_hash, merkle_hash, content_bytes):
-        IN_MEMORY_CACHE[merkle_hash] = ContentHash(content_hash)
-        IN_MEMORY_CACHE[content_hash] = content_bytes
+class SqliteCache:
+    connection = None
 
     @classmethod
-    def get(cls, hash, is_content_hash=False):
-        value = IN_MEMORY_CACHE.get(hash)
-        if isinstance(value, ContentHash):
-            return IN_MEMORY_CACHE.get(value.hash)
+    def connect(cls):
+        if cls.connection is None:
+            cls.connection = sqlite3.connect(get_db_path())
+            cls.cursor = cls.connection.cursor()
 
     @classmethod
-    def has(cls, hash, is_content_hash=False):
-        return hash in IN_MEMORY_CACHE
+    def create_cache(cls):
+        if os.path.exists(get_db_path()):
+            return
 
+        os.makedirs(get_merkl_path(), exist_ok=True)
+        cls.connect()
+        cls.cursor.execute("""
+            CREATE TABLE cache (
+                hash CHARACTER(64) PRIMARY KEY,
+                data BLOB
+            )
+        """)
 
-class DVCFileCache:
+        cls.cursor.execute("""
+            CREATE TABLE files (
+                path TEXT,
+                modified INTEGER,
+                merkl_hash CHARACTER(64),
+                md5_hash CHARACTER(64),
+                PRIMARY KEY (path, modified)
+            )
+        """)
+
     @classmethod
-    def add(cls, content_hash, merkle_hash, content_bytes):
-        os.makedirs(cache_dir_path(content_hash), exist_ok=True)
-        os.makedirs(cache_dir_path(merkle_hash), exist_ok=True)
-
-        content_path = cache_file_path(content_hash)
-        merkle_path = cache_file_path(merkle_hash)
-        with open(content_path, 'wb') as f:
-            f.write(content_bytes)
-
-        os.link(content_path, merkle_path)
+    def add(cls, hash, content_bytes=None):
+        cls.connect()
+        cls.cursor.execute("INSERT INTO cache VALUES (?, ?)", (hash, content_bytes))
 
     @classmethod
-    def get(cls, hash, is_content_hash=False):
-        path = cache_file_path(hash)
-        if not os.path.exists(path):
+    def add_file(cls, path, modified, merkl_hash=None, md5_hash=None):
+        cls.connect()
+        cls.cursor.execute("INSERT INTO files VALUES (?, ?, ?, ?)", (path, modified, merkl_hash, md5_hash))
+
+    @classmethod
+    def get_file_hash(cls, path, modified):
+        cls.connect()
+        result = cls.cursor.execute("SELECT md5_hash, merkl_hash FROM files WHERE path=? AND modified=?", (path, modified))
+        result = list(result)
+        if len(result) == 0:
+            return None, None
+
+        assert len(result) == 1
+        return result[0]
+
+    @classmethod
+    def get(cls, hash):
+        cls.connect()
+        result = cls.cursor.execute("SELECT data FROM cache WHERE hash=?", (hash,))
+        result = list(result)
+        if len(result) == 0:
             return None
 
-        with open(path, 'rb') as f:
-            return f.read()
+        return result[0][0]
 
     @classmethod
-    def has(cls, hash, is_content_hash=False):
-        path = cache_file_path(hash)
-        return os.path.exists(path)
+    def has(cls, hash):
+        cls.connect()
+
+        result = cls.cursor.execute("SELECT COUNT(*) FROM cache WHERE hash=?", (hash,))
+        result = list(result)
+        return result[0][0] > 0

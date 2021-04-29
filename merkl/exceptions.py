@@ -6,10 +6,6 @@ class SerializationError(BaseException):
     pass
 
 
-class FileNotTrackedError(BaseException):
-    pass
-
-
 class BatchTaskError(BaseException):
     pass
 

@@ -1,12 +1,13 @@
 import unittest
 from merkl import *
+from merkl.tests import TestCaseWithMerklRepo
 
 
-class TestCache(unittest.TestCase):
+class TestCache(TestCaseWithMerklRepo):
     def test_caching(self):
         task_has_run = False
 
-        @task(caches=[InMemoryCache])
+        @task
         def task1(arg):
             nonlocal task_has_run
             task_has_run = True

@@ -3,11 +3,13 @@ import sys
 import argparse
 from pathlib import Path
 
+from merkl.cli.init import InitAPI
 from merkl.cli.run import RunAPI
 from merkl.cli.dot import DotAPI
 
 
 class MerkLAPI:
+    init = InitAPI()
     run = RunAPI()
     dot = DotAPI()
 
@@ -32,11 +34,15 @@ def main():
     version_parser = subparsers.add_parser('version', description='Display version')
     version_parser.set_defaults(command='version', subcommand='')
 
+    # ------------- INIT --------------
+    init_parser = subparsers.add_parser(
+        'init', description='Initialize a .merkl cache for this project')
+    init_parser.set_defaults(command='init', subcommand='init')
+
     # ------------- RUN --------------
     run_parser = subparsers.add_parser(
         'run', description='Run a task or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
-    run_parser.add_argument('--cache', choices=['dvc', 'memory'], help='Override cache for all futures')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
 
     # ------------- DAG --------------
@@ -44,7 +50,6 @@ def main():
         'dot', description='Output the DAG of a task or pipeline as a dot file')
     dot_parser.set_defaults(command='dot', subcommand='dot')
     dot_parser.add_argument('--rankdir', choices=['TB', 'LR'], help='Value for the rankdir dot graph parameter')
-    dot_parser.add_argument('--cache', choices=['dvc', 'memory'], help='Override cache for all futures')
     dot_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
 
     args, unknown_args = parser.parse_known_args()

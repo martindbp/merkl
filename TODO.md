@@ -1,7 +1,3 @@
-Add `defer` function from inside a task to run a piece of code after results have been persisted
-
-When calling batch task, don't evaluate cached results
-
 Ability to make functions out of bash commands e.g:
 ```
 resize_image = bash_task('imagmagick resize {file_arg('input_file', '.png')} {out_file_arg('output_file', '.png')} --size {arg('input_size')}')

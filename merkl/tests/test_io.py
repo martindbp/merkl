@@ -5,37 +5,51 @@ import shutil
 import unittest
 from time import sleep
 from pathlib import Path
+from unittest.mock import patch
+
 import merkl.io
 from merkl import *
-from merkl.exceptions import FileNotTrackedError
+from merkl.tests import TestCaseWithMerklRepo
+from merkl.utils import get_hash_memory_optimized
 
 
-class TestIO(unittest.TestCase):
-    tmp_file = '/tmp/merkl/tmpfile.txt'
-    tmp_file2 = '/tmp/merkl/tmpfile2.txt'
-    cwd = '/tmp/merkl/'
+class TestIO(TestCaseWithMerklRepo):
+    tmp_file = '/tmp/tmpfile.txt'
+    tmp_file2 = '/tmp/tmpfile2.txt'
 
     def setUp(self):
-        os.makedirs('/tmp/merkl/', exist_ok=True)
+        super().setUp()
         with open(self.tmp_file, 'w') as f:
             f.write('hello world')
 
         with open(self.tmp_file2, 'w') as f:
             f.write('hej världen')
 
-        merkl.io.cwd = self.cwd
-
     def tearDown(self):
-        shutil.rmtree('/tmp/merkl/')
-        merkl.io.cwd = None
+        super().tearDown()
 
     def test_read_future(self):
-        with self.assertRaises(FileNotTrackedError):
+        with self.assertRaises(FileNotFoundError):
             read_future('non_existant_file.txt', '')
 
-        track_file(self.tmp_file)
-        ff = read_future(self.tmp_file, '')
-        self.assertEqual(ff.eval(), 'hello world')
+        called = False
+        def _mock(path, mode):
+            nonlocal called
+            called = True
+            return get_hash_memory_optimized(path, mode)
+
+        with patch('merkl.io.get_hash_memory_optimized', _mock):
+            ff = read_future(self.tmp_file, '')
+            self.assertEqual(ff.eval(), 'hello world')
+
+        self.assertTrue(called)
+        called = False
+
+        # Make sure this expensive hashing doesn't happen again the second time
+        with patch('merkl.io.get_hash_memory_optimized', _mock):
+            ff = read_future(self.tmp_file, '')
+
+        self.assertFalse(called)
 
     def test_write_future(self):
         @task
@@ -76,13 +90,11 @@ class TestIO(unittest.TestCase):
         self.assertTrue(isinstance(fpath1, Future))
         self.assertEqual(task1(fpath1).eval(), self.tmp_file)
 
-        track_file(self.tmp_file)
         fpath2 = path_future(self.tmp_file)
         self.assertEqual(fpath1.hash, fpath2.hash)
 
         with open(self.tmp_file, 'w') as f:
             f.write('goodbye world')
-        track_file(self.tmp_file)
         fpath3 = path_future(self.tmp_file)
 
         self.assertNotEqual(fpath3.hash, fpath2.hash)

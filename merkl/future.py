@@ -49,7 +49,7 @@ FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'serializer']
 
 class Future:
     __slots__ = [
-        'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', '_caches', 'serializer', 'bound_args',
+        'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', '_cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'batch_idx',
     ]
@@ -61,7 +61,7 @@ class Future:
         outs=1,
         out_name=None,
         deps=[],
-        caches=[],
+        cache=None,
         serializer=None,
         bound_args=None,
         outs_shared_cache=None,
@@ -80,7 +80,7 @@ class Future:
         self.outs = outs
         self.out_name = out_name
         self.deps = deps
-        self._caches = caches
+        self._cache = cache
         self.serializer = serializer
         self.bound_args = bound_args
 
@@ -102,10 +102,10 @@ class Future:
 
     @property
     def caches(self):
-        if not self.is_input and merkl.cache.cache_override != 0:
-            # Cannot override the cache of input or output futures
-            return [merkl.cache.cache_override]
-        return self._caches
+        if isinstance(self._cache, list):
+            return self._cache
+
+        return [self._cache] if self._cache is not None else []
 
     @property
     def code_args_hash(self):
@@ -206,16 +206,13 @@ class Future:
             # Futures from io should not be cached (but is read from cache)
             if (len(self.caches) > 0 and not self.in_cache()) or len(self.output_files) > 0:
                 specific_out_bytes = self.serializer.dumps(specific_out)
-                m = hashlib.sha256()
-                m.update(specific_out_bytes)
-                content_hash = m.hexdigest()
 
-                for path, track in self.output_files:
-                    write_track_file(path, specific_out_bytes, content_hash, track)
+                for path in self.output_files:
+                    write_track_file(path, specific_out_bytes, self.hash)
 
                 for cache in self.caches:
                     if not cache.has(self.hash):
-                        cache.add(content_hash, self.hash, specific_out_bytes)
+                        cache.add(self.hash, specific_out_bytes)
 
         for defer_fn in DEFER[self.invocation_id]:
             defer_fn()
@@ -263,7 +260,7 @@ class Future:
         if not isinstance(path, str):
             return NotImplemented
 
-        return write_future(self, path, track=False)
+        return write_future(self, path)
 
 
 # Override all the operators of Future to raise a specific exception when used
