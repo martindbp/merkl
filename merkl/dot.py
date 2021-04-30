@@ -13,8 +13,9 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
     for future in futures:
         is_cached_pipeline = future.parent_pipeline_future is not None and len(future.parent_futures()) == 0
         node_future = future.parent_pipeline_future if is_cached_pipeline else future
+        out_name = future.batch_idx if future.batch_idx is not None else future.out_name
 
-        node_id = f'{future.out_name}_{node_future.hash[:6]}_{node_future.invocation_id}'
+        node_id = f'{out_name}_{node_future.hash[:6]}_{node_future.invocation_id}'
         code_args_hash = None
         if node_future.code_args_hash:
             code_args_hash = f'{node_future.code_args_hash}_{node_future.invocation_id}'
@@ -50,17 +51,23 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
                 if len(nested_collect(val, lambda x: isinstance(x, Future))) > 0:
                     continue
 
-                val_str = f"'{val}'" if isinstance(val, str) else str(val)
-                args_str += (f'{key}={val_str}')[:MAX_LEN] + '\n'
+                if node_future.batch_idx is not None:
+                    val = val[node_future.batch_idx]
+                    val_str = f"'{val}'" if isinstance(val, str) else str(val)
+                    args_str += val_str[:MAX_LEN] + '\n'
+                else:
+                    val_str = f"'{val}'" if isinstance(val, str) else str(val)
+                    args_str += (f'{key}={val_str}')[:MAX_LEN] + '\n'
 
             args_str = args_str.strip()
+
 
         if args_str:
             args_id = code_args_hash
             args_label = args_str
             if node_future.batch_idx is not None:
-                args_id = f'{args_id}_{node_future.out_name}'  # out_name is batch index
-                args_label = f'{node_future.out_name}: {args_label}'
+                args_id = f'{args_id}_{out_name}'
+                args_label = f'{out_name}: {args_label}'
             print(f'\t"fn_{args_id}_args" [shape=plain, style=solid, label="{args_label}"];')
             if f'{args_id}_{code_args_hash}' not in printed:
                 print(f'\t"fn_{args_id}_args" -> "fn_{code_args_hash}";')
@@ -75,10 +82,10 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
                 node_label = f'{path}<br/>{future.hash[:4]}'
             else:
                 shape = 'parallelogram'
-                if future.out_name is None:
+                if out_name is None:
                     node_label = future.hash[:4]
                 else:
-                    node_label = f'{future.out_name}: {future.hash[:4]}'
+                    node_label = f'{out_name}: {future.hash[:4]}'
 
             label = f"< <font color='{color}'>{node_label}</font> >"
 
