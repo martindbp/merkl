@@ -1,13 +1,12 @@
+Add --no-cache option
+
 Ability to make functions out of bash commands e.g:
 ```
 resize_image = bash_task('imagmagick resize {file_arg('input_file', '.png')} {out_file_arg('output_file', '.png')} --size {arg('input_size')}')
 ```
 
-Keep cache/results in a hidden sqlite database. Don't use the equivalent of .dvc files as they clutters the file system,
-instead keep a single ".merklist" file where each line is a file, its merkl hash (and content hash?). Timestamps for
-diffing stored in database
-    Efficient stats of all files with os.scandir
-    Or, put them in the .gitignore so we don't have yet another file, and all the paths need to be there anyway
+Implement `merkl status` that goes through all files tracked in the sqlite db, does stat on them in the filesystem
+and lists if they have been changed
 
 
 Implement find_pip_version() / pip_version_of('numpy')

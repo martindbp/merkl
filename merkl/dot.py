@@ -67,10 +67,10 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
                 printed.add(f'{args_id}_{code_args_hash}')
 
         if node_id not in printed:
-            color = 'green' if future.in_cache() else 'red'
+            color = 'green' if future.in_cache() or future.is_input else 'red'
             if future.is_input or len(future.output_files) > 0:
                 # NOTE: in this case we store the file path in meta
-                path = future.meta if future.is_input else '<br/>'.join(path for path, _ in future.output_files)
+                path = future.meta if future.is_input else '<br/>'.join(future.output_files)
                 shape = 'cylinder'
                 node_label = f'{path}<br/>{future.hash[:4]}'
             else:

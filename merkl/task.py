@@ -90,8 +90,8 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
         raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
 
     batch_fn_sig = signature(batch_fn)
-    if set(batch_fn_sig.parameters.keys()) != {'args'}:
-        raise BatchTaskError(f'Batch function {batch_fn} must have exactly one input arg named "args"')
+    if len(batch_fn_sig.parameters.keys()) != 1:
+        raise BatchTaskError(f'Batch function {batch_fn} must have exactly one input arg')
 
     batch_fn_code_hash = code_hash(batch_fn, True)
 
@@ -136,7 +136,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
                 # Override cache
                 if cache:
-                    specific_out._cache = cache
+                    specific_out.cache = cache
 
                 is_cached = is_cached or specific_out.in_cache()
                 if not is_cached:

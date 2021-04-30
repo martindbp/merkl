@@ -1,49 +1,48 @@
 #! /bin/zsh
-rm -rf .dvc .git
+rm -rf .merkl .git
 
 echo "train" > train.csv
 echo "test" > test.csv
 
 git init
-dvc init
+merkl init
 
 export INPUT=42
 export IMAGE=pipeline1
 export MODULE_FUNCTION=pipeline1.my_pipeline
-merkl dot --cache dvc $MODULE_FUNCTION $INPUT | dot -Tpng -o$IMAGE.png
-export OUTPUT="$(merkl run --cache dvc $MODULE_FUNCTION $INPUT)"
+merkl dot $MODULE_FUNCTION $INPUT | dot -Tpng -o$IMAGE.png
+export OUTPUT="$(merkl run $MODULE_FUNCTION $INPUT)"
 export FILENAME=pipeline1.py
 export CODE="$(cat $FILENAME)"
 export TABLE1="$(envsubst < table_template.md)"
 
-merkl dot --cache dvc pipeline1.my_pipeline 42 | dot -Tpng -opipeline1_2.png
-merkl dot --cache dvc pipeline1_2.my_pipeline 42 | dot -Tpng -opipeline1_3.png
-
-dvc add train.csv test.csv
+merkl dot pipeline1.my_pipeline 42 | dot -Tpng -opipeline1_2.png
+merkl dot pipeline1_2.my_pipeline 42 | dot -Tpng -opipeline1_3.png
 
 
 export INPUT=""
 export IMAGE=pipeline2
 export MODULE_FUNCTION=pipeline2.train_eval
-merkl dot --cache dvc $MODULE_FUNCTION $INPUT | dot -Tpng -o$IMAGE.png
-export OUTPUT="$(merkl run --cache dvc $MODULE_FUNCTION $INPUT)"
+merkl dot $MODULE_FUNCTION $INPUT | dot -Tpng -o$IMAGE.png
+export OUTPUT="$(merkl run $MODULE_FUNCTION $INPUT)"
 export FILENAME=pipeline2.py
 export CODE="$(cat $FILENAME)"
 export TABLE2="$(envsubst < table_template.md)"
 
-rm -rf .dvc .git .gitignore .dvcignore train.csv* test.csv* model.bin*
-
 export INPUT=""
 export IMAGE=pipeline3
 export MODULE_FUNCTION=outs_lambda.pipeline
-merkl dot --cache dvc $MODULE_FUNCTION $INPUT | dot -Tpng -o$IMAGE.png
-export OUTPUT="$(merkl run --cache dvc $MODULE_FUNCTION $INPUT)"
+merkl dot $MODULE_FUNCTION $INPUT | dot -Tpng -o$IMAGE.png
+export OUTPUT="$(merkl run $MODULE_FUNCTION $INPUT)"
 export FILENAME=outs_lambda.py
 export CODE="$(cat $FILENAME)"
 export TABLE3="$(envsubst < table_template.md)"
 
 merkl dot batch.pipeline1 | dot -Tpng -opipeline4_1.png
 merkl dot batch.pipeline2 | dot -Tpng -opipeline4_2.png
+
+rm -rf .merkl .git .gitignore train.csv* test.csv* model.bin*
+
 
 # Make the README file
 envsubst < README_template.md > ../README.md

@@ -4,6 +4,7 @@ from collections import defaultdict
 import merkl.cache
 from merkl.io import write_track_file, write_future
 from merkl.utils import OPERATORS, nested_map, nested_collect
+from merkl.cache import get_modified_time
 from merkl.exceptions import *
 
 
@@ -49,7 +50,7 @@ FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'serializer']
 
 class Future:
     __slots__ = [
-        'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', '_cache', 'serializer', 'bound_args',
+        'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'batch_idx',
     ]
@@ -80,7 +81,7 @@ class Future:
         self.outs = outs
         self.out_name = out_name
         self.deps = deps
-        self._cache = cache
+        self.cache = cache
         self.serializer = serializer
         self.bound_args = bound_args
 
@@ -99,13 +100,6 @@ class Future:
         self.parent_pipeline_future = None
         self.invocation_id = invocation_id
         self.batch_idx = batch_idx
-
-    @property
-    def caches(self):
-        if isinstance(self._cache, list):
-            return self._cache
-
-        return [self._cache] if self._cache is not None else []
 
     @property
     def code_args_hash(self):
@@ -150,20 +144,21 @@ class Future:
         )
 
     def in_cache(self):
-        for cache in self.caches:
-            if cache.has(self.hash):
-                return True
+        if self.cache is None:
+            return False
 
-        return False
+        return self.cache.has(self.hash)
 
     def get_cache(self):
-        for cache in self.caches:
-            if cache.has(self.hash):
-                val = cache.get(self.hash)
-                if self.is_input:
-                    # reading from source file, not serialized
-                    return val
-                return self.serializer.loads(val)
+        if self.cache is None:
+            return None
+
+        if self.cache.has(self.hash):
+            val = self.cache.get(self.hash)
+            if self.is_input:
+                # reading from source file, not serialized
+                return val
+            return self.serializer.loads(val)
 
     def eval(self):
         global DEFER
@@ -202,17 +197,32 @@ class Future:
         if self.out_name is not None:
             specific_out = outputs[self.out_name]
 
-        if not self.is_input:
-            # Futures from io should not be cached (but is read from cache)
-            if (len(self.caches) > 0 and not self.in_cache()) or len(self.output_files) > 0:
+        if not self.is_input:  # Futures from io should not be cached (but is read from cache)
+            specific_out_bytes = None
+            if self.cache is not None and not self.in_cache():
                 specific_out_bytes = self.serializer.dumps(specific_out)
 
                 for path in self.output_files:
                     write_track_file(path, specific_out_bytes, self.hash)
 
-                for cache in self.caches:
-                    if not cache.has(self.hash):
-                        cache.add(self.hash, specific_out_bytes)
+                self.cache.add(self.hash, specific_out_bytes)
+
+            for path in self.output_files:
+                # Check if output file is up to date
+                modified = get_modified_time(path)
+                found = False
+                if self.cache is not None:
+                    for md5_hash, merkl_hash, modified_time in self.cache.get_files(path):
+                        if modified_time == modified and merkl_hash == self.hash:
+                            found = True
+                            break
+
+                # If not found, serialize and write the file
+                if not found:
+                    if specific_out_bytes is None:
+                        specific_out_bytes = self.serializer.dumps(specific_out)
+
+                    write_track_file(path, specific_out_bytes, self.hash)
 
         for defer_fn in DEFER[self.invocation_id]:
             defer_fn()
@@ -227,7 +237,7 @@ class Future:
     def __getstate__(self):
         # NOTE: a future is only pickled/serialized when it is returned by a pipeline 
 
-        if len(self.caches) == 0:
+        if self.cache is None:
             raise SerializationError(f'Serializing {repr(self)} ({self.fn}) but there is no cache set')
 
         # Trigger calculation of _hash and _code_args_hash that we want to serialize

@@ -12,6 +12,13 @@ def get_db_path():
     return f'{get_merkl_path()}cache.sqlite3'
 
 
+def get_modified_time(path):
+    try:
+        return os.stat(path).st_mtime
+    except:
+        return None
+
+
 class SqliteCache:
     connection = None
 
@@ -49,14 +56,18 @@ class SqliteCache:
     def add(cls, hash, content_bytes=None):
         cls.connect()
         cls.cursor.execute("INSERT INTO cache VALUES (?, ?)", (hash, content_bytes))
+        cls.connection.commit()
 
     @classmethod
-    def add_file(cls, path, modified, merkl_hash=None, md5_hash=None):
+    def add_file(cls, path, modified=None, merkl_hash=None, md5_hash=None):
+        modified = modified or get_modified_time(path)
         cls.connect()
         cls.cursor.execute("INSERT INTO files VALUES (?, ?, ?, ?)", (path, modified, merkl_hash, md5_hash))
+        cls.connection.commit()
 
     @classmethod
-    def get_file_hash(cls, path, modified):
+    def get_file_mod_hash(cls, path, modified=None):
+        modified = modified or get_modified_time(path)
         cls.connect()
         result = cls.cursor.execute("SELECT md5_hash, merkl_hash FROM files WHERE path=? AND modified=?", (path, modified))
         result = list(result)
@@ -65,6 +76,13 @@ class SqliteCache:
 
         assert len(result) == 1
         return result[0]
+
+    @classmethod
+    def get_files(cls, path):
+        cls.connect()
+        result = cls.cursor.execute("SELECT md5_hash, merkl_hash, modified FROM files WHERE path=?", (path,))
+        result = list(result)
+        return result
 
     @classmethod
     def get(cls, hash):
@@ -79,7 +97,13 @@ class SqliteCache:
     @classmethod
     def has(cls, hash):
         cls.connect()
-
         result = cls.cursor.execute("SELECT COUNT(*) FROM cache WHERE hash=?", (hash,))
+        result = list(result)
+        return result[0][0] > 0
+
+    @classmethod
+    def has_file(cls, hash):
+        cls.connect()
+        result = cls.cursor.execute("SELECT COUNT(*) FROM files WHERE md5_hash=?", (hash,))
         result = list(result)
         return result[0][0] > 0
