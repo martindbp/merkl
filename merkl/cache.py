@@ -12,6 +12,20 @@ def get_db_path():
     return f'{get_merkl_path()}cache.sqlite3'
 
 
+def get_cache_dir_path(hash=None):
+    base = f'{get_merkl_path()}cache/'
+    if hash is not None:
+        return f'{base}{hash[:2]}/'
+    return base
+
+
+def get_cache_file_path(hash, ext='bin', makedirs=False):
+    cache_dir = get_cache_dir_path(hash)
+    if makedirs:
+        os.makedirs(cache_dir, exist_ok=True)
+    return f'{cache_dir}{hash}.{ext}'
+
+
 def get_modified_time(path):
     try:
         return os.stat(path).st_mtime
@@ -34,6 +48,7 @@ class SqliteCache:
             return
 
         os.makedirs(get_merkl_path(), exist_ok=True)
+        os.makedirs(get_cache_dir_path(), exist_ok=True)
         cls.connect()
         cls.cursor.execute("""
             CREATE TABLE cache (
@@ -54,6 +69,19 @@ class SqliteCache:
 
     @classmethod
     def add(cls, hash, content_bytes=None):
+        from merkl.io import FileOut
+        if isinstance(content_bytes, FileOut):
+            file_out = content_bytes
+            ext = file_out.path.split('.')[-1]
+            cache_file_path = get_cache_file_path(hash, ext, makedirs=True)
+            os.link(file_out.path, cache_file_path)
+            orig_path = file_out.path
+            file_out.path = cache_file_path
+            content_bytes = f'<FileOut {file_out.path}>'.encode()
+            if file_out.rm_after_caching:
+                os.remove(orig_path)
+
+
         cls.connect()
         cls.cursor.execute("INSERT INTO cache VALUES (?, ?)", (hash, content_bytes))
         cls.connection.commit()
@@ -78,11 +106,17 @@ class SqliteCache:
         return result[0]
 
     @classmethod
-    def get_files(cls, path):
+    def get_latest_file(cls, path):
         cls.connect()
-        result = cls.cursor.execute("SELECT md5_hash, merkl_hash, modified FROM files WHERE path=?", (path,))
+        result = cls.cursor.execute("""
+            SELECT md5_hash, merkl_hash, modified
+            FROM files
+            WHERE path=? ORDER BY modified DESC
+        """, (path,))
         result = list(result)
-        return result
+        if len(result) == 0:
+            return None, None, None
+        return result[0]
 
     @classmethod
     def get(cls, hash):
@@ -92,7 +126,11 @@ class SqliteCache:
         if len(result) == 0:
             return None
 
-        return result[0][0]
+        data = result[0][0]
+        if data is None:
+            return open(get_cache_file_path(hash), 'rb').read()
+
+        return data
 
     @classmethod
     def has(cls, hash):

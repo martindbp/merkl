@@ -158,6 +158,7 @@ class Future:
             if self.is_input:
                 # reading from source file, not serialized
                 return val
+
             return self.serializer.loads(val)
 
     def eval(self):
@@ -201,24 +202,18 @@ class Future:
             specific_out_bytes = None
             if self.cache is not None and not self.in_cache():
                 specific_out_bytes = self.serializer.dumps(specific_out)
-
-                for path in self.output_files:
-                    write_track_file(path, specific_out_bytes, self.hash)
-
                 self.cache.add(self.hash, specific_out_bytes)
 
             for path in self.output_files:
                 # Check if output file is up to date
                 modified = get_modified_time(path)
-                found = False
+                up_to_date = False
                 if self.cache is not None:
-                    for md5_hash, merkl_hash, modified_time in self.cache.get_files(path):
-                        if modified_time == modified and merkl_hash == self.hash:
-                            found = True
-                            break
+                    md5_hash, merkl_hash, modified_time = self.cache.get_latest_file(path)
+                    up_to_date = modified_time == modified and merkl_hash == self.hash
 
-                # If not found, serialize and write the file
-                if not found:
+                # If not up to date, serialize and write the new file
+                if not up_to_date:
                     if specific_out_bytes is None:
                         specific_out_bytes = self.serializer.dumps(specific_out)
 

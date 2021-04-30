@@ -1,5 +1,9 @@
 Add --no-cache option
 
+Add type hints / mypy
+    Attach a type hint to Future, check for equality when passing in to other tasks
+    Use typeguard to check constant inputs and return values
+
 Ability to make functions out of bash commands e.g:
 ```
 resize_image = bash_task('imagmagick resize {file_arg('input_file', '.png')} {out_file_arg('output_file', '.png')} --size {arg('input_size')}')
@@ -48,13 +52,6 @@ Have a cache backend that dedupes using content hash.
     Implement SQLite backend, good for small values and links
 
 Make sure functions are executed in the same order as the code
-
-Provide task wrapper for executing shell commands
-    Provide file content and fileobject variants
-    Provide paths to named pipes instead of output files for the shell command?
-
-Add type hints / mypy
-    Possible to use mypy as a library to enforce types at runtime when we build the graph?
 
 Idea: A task can be eager or lazy. If eager, we execute right away and put in cache unless
 already in cache. We can also execute it in another process (hence future)

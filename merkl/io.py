@@ -5,6 +5,7 @@ from functools import partial
 from datetime import datetime
 from merkl.utils import get_hash_memory_optimized
 from merkl.cache import SqliteCache
+from merkl.exceptions import SerializationError
 
 
 cwd = ''
@@ -55,9 +56,38 @@ def fetch_or_compute_md5(path, store=True):
 
 
 def write_track_file(path, content_bytes, merkl_hash):
-    with open(path, 'wb') as f:
-        f.write(content_bytes)
+    if isinstance(content_bytes, FileOut):
+        shutil.copy(content_bytes.path, path)
+    else:
+        with open(path, 'wb') as f:
+            f.write(content_bytes)
 
     # NOTE: we could get the md5 hash and store it, but not strictly necessary for
     # files that merkl has "created". The md5 is necessary though for files _read_ by merkl but produced elsewhere
     SqliteCache.add_file(path, merkl_hash=merkl_hash)
+
+
+class FileOut:
+    def __init__(self, path, rm_after_caching=False):
+        self.path = path
+        self.rm_after_caching = rm_after_caching
+
+    def __str__(self):
+        return self.path
+
+    def __repr__(self):
+        return f'<FileOut {self.path}>'
+
+    def __getstate__(self):
+        # Prevent trying to serialize with pickle (without FileOutSerializer)
+        raise SerializationError('To return a "FileOut", set the FileOutSerializer as the task serializer')
+
+
+class FileOutSerializer:
+    @classmethod
+    def dumps(cls, file_out):
+        return file_out
+
+    @classmethod
+    def loads(cls, data):
+        return FileOut(data.decode('utf-8').removeprefix('<FileOut ').removesuffix('>'))
