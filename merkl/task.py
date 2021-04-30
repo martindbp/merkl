@@ -134,9 +134,11 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
                 # Store the output temporarily
                 specific_out._code_args_hash = batch_fn_code_hash
 
-                # Override cache
+                # Override cache and serializer
                 if cache:
                     specific_out.cache = cache
+                if serializer:
+                    specific_out.serializer = serializer
 
                 is_cached = is_cached or specific_out.in_cache()
                 if not is_cached:
@@ -151,14 +153,13 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
         # Swap out the args to the final list of batch args with non-cached results
         batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args])
-        for i, (out, args) in enumerate(non_cached_outs_args):
+        for i, (out, _) in enumerate(non_cached_outs_args):
             for specific_out in nested_collect(out, lambda x: isinstance(x, Future)):
                 specific_out.bound_args = batch_bound_args
                 # Store the batch index from where the out should pick its results
                 specific_out.batch_idx = i
 
         next_invocation_id = invocation_id + 1
-
         return outs
 
     wrap.is_merkl = True

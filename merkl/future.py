@@ -22,30 +22,6 @@ def map_future_to_value(val):
     return val
 
 
-"""
-The defer function can be used from inside a task to make sure a function in called after any results have been persisted, e.g:
-
-@task
-def my_task():
-    f = open('tempfile.txt', 'w')
-    f.write('hello world\n')
-
-    def _close_remove():
-        f.close()
-        os.remove('tempfile.txt')
-
-    defer(_close_remove)
-    return f  # contents will be read from `f` and cached
-
-"""
-DEFER = defaultdict(list)
-def defer(f):
-    global DEFER
-    from merkl.task import next_invocation_id
-    current_invocation_id = next_invocation_id - 1
-    DEFER[current_invocation_id].append(f)
-
-
 FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'serializer']
 
 class Future:
@@ -162,41 +138,37 @@ class Future:
             return self.serializer.loads(val)
 
     def eval(self):
-        global DEFER
-        assert len(DEFER.get(self.invocation_id, [])) == 0
-
         specific_out = None
-        use_batch_idx = False
-        if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
+        outputs = None
+        is_cached = self.in_cache()
+        if is_cached:
+            specific_out = self.get_cache()
+        elif self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
             outputs = self.outs_shared_cache.get(self.code_args_hash)
-            use_batch_idx = self.batch_idx is not None
-        elif self.in_cache():
-            outputs = self.get_cache()
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
-            use_batch_idx = self.batch_idx is not None
 
-        if use_batch_idx:
-            # If result is calculated in batch function, get the right index
-            outputs = outputs[self.batch_idx]
+        if not is_cached:
+            if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
+                raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
+            elif isinstance(outputs, dict) and len(outputs) != len(self.outs):
+                raise TaskOutsError('Wrong number of outputs: {len(outputs)}. Expected {len(self.outs)}')
 
-        if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
-            raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
-        elif isinstance(outputs, dict) and len(outputs) != len(self.outs):
-            raise TaskOutsError('Wrong number of outputs: {len(outputs)}. Expected {len(self.outs)}')
+            if self.batch_idx is not None:
+                outputs = outputs[self.batch_idx]
+            if self.out_name is not None:
+                outputs = outputs[self.out_name]
+
+            specific_out = outputs
 
         if self.is_pipeline:
             # Set the pipeline function on all output futures
             for future in nested_collect(outputs, lambda x: isinstance(x, Future)):
                 future.parent_pipeline_future = self
-
-        specific_out = outputs
-        if self.out_name is not None:
-            specific_out = outputs[self.out_name]
 
         if not self.is_input:  # Futures from io should not be cached (but is read from cache)
             specific_out_bytes = None
@@ -218,11 +190,6 @@ class Future:
                         specific_out_bytes = self.serializer.dumps(specific_out)
 
                     write_track_file(path, specific_out_bytes, self.hash)
-
-        for defer_fn in DEFER[self.invocation_id]:
-            defer_fn()
-
-        del DEFER[self.invocation_id]
 
         return specific_out
 

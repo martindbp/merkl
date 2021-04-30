@@ -86,6 +86,8 @@ class FileOut:
 class FileOutSerializer:
     @classmethod
     def dumps(cls, file_out):
+        if not os.path.exists(file_out.path):
+            raise ValueError(f'FileOut {file_out.path} does not exist')
         return file_out
 
     @classmethod
