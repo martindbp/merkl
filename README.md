@@ -1,7 +1,9 @@
 # MerkL - flexible ML pipelines in Python with great caching
 
-MerkL is a tool for creating ML pipelines in pure Python that are useful for development and experimentation, but also
-easy to deploy to production without modifications. Results are cached using Merkle hashes of the code and inputs as keys.
+MerkL is a tool for creating ML pipelines in pure Python that are useful for
+development and experimentation, but also easy to deploy to production without
+modifications. Results are cached using Merkle hashes of the code and inputs as
+keys, greatly simplifying caching and reducing the need for a feature store.
 
 ## Tour and examples
 
@@ -272,7 +274,8 @@ from merkl import task
 @task(outs=lambda data, k: k)
 def split(data, k):
     ksize = len(data) // k
-    return [data[i*ksize:(i+1)*ksize] for i in range(k)]
+    return [data[i*ksize:(i+1)*ksize]
+            for i in range(k)]
 
 def pipeline():
     return split([1, 2, 3, 4, 5, 6], k=2)
@@ -347,7 +350,7 @@ outputs between them will be cached. In this case you can use the `batch` decora
 ```python
 @batch(embed_word)
 def embed_words(words):
-    [...]
+    ...
     return embedded_words
 ```
 
@@ -358,7 +361,7 @@ case you can also use the `batch` decorator but without an argument:
 
 @batch
 def embed_words(words):
-    [...]
+    ...
     return embedded_words
 
 ```
