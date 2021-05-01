@@ -10,6 +10,8 @@ from merkl.tests import TestCaseWithMerklRepo
 from merkl.future import Future
 from merkl.task import task, batch, pipeline, HashMode
 from merkl.exceptions import *
+from merkl.utils import get_hash_memory_optimized
+from merkl.io import path_future
 
 
 def get_stderr(f):
@@ -227,6 +229,18 @@ class TestTask(TestCaseWithMerklRepo):
         self.assertEqual(len(deps), 2)
         self.assertTrue('my_global_variable' in deps)
         self.assertTrue('_my_fn' in deps)
+
+        # Test path_future as dep
+        filepath = '/tmp/my_file.txt'
+        with open(filepath, 'w') as f:
+            f.write('test')
+
+        @task(deps=[path_future(filepath)])
+        def my_dep_task():
+            return 1
+
+        self.assertTrue(f'<Future {get_hash_memory_optimized(filepath)}>' in my_dep_task.deps)
+
 
     def test_future_operator_access(self):
         # Test that Future cannot be accessed by checking some operators

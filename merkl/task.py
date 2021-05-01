@@ -2,6 +2,7 @@ import json
 import hashlib
 import textwrap
 import pickle
+from pathlib import Path
 from enum import Enum
 from functools import lru_cache
 from sigtools.specifiers import forwards_to_function
@@ -13,6 +14,7 @@ from merkl.utils import (
     get_function_return_info,
     find_function_deps,
     FunctionDep,
+    get_hash_memory_optimized,
 )
 from merkl.future import Future
 from merkl.exceptions import *
@@ -69,6 +71,8 @@ def validate_resolve_deps(deps):
             deps[i] = f'<Module {dep.__name__}: {code_hash(dep, is_module=True)}>'
         elif isinstance(dep, bytes):
             deps[i] = dep.decode('utf-8')
+        elif isinstance(dep, Future):
+            deps[i] =  f'<Future {dep.hash}>'
         elif not isinstance(dep, str):
             try:
                 deps[i] = json.dumps(dep)
@@ -184,7 +188,10 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCach
         if len(return_types) != 1 and 'Tuple' in return_types:
             raise TaskOutsError(f'Mismatch of number of return values in function return statements: {f}')
         elif len(num_returns) != 1:
-            raise TaskOutsError(f'Mismatch of number of return values in function return statements: {f}')
+            if len(num_returns) == 0:
+                raise TaskOutsError(f'{f} has no return statement, cannot deduce number of outs')
+            else:
+                raise TaskOutsError(f'Mismatch of number of return values in function return statements: {f}')
 
         outs = num_returns.pop()
         return_type = return_types.pop()

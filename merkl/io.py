@@ -18,7 +18,7 @@ def _get_file_content(path, flags):
 
 def path_future(path):
     if not os.path.exists(path):
-        raise FileNotFoundError
+        raise FileNotFoundError(path)
 
     md5_hash = fetch_or_compute_md5(path, store=True)
 
@@ -31,7 +31,7 @@ def path_future(path):
 
 def read_future(path, flags=''):
     if not os.path.exists(path):
-        raise FileNotFoundError
+        raise FileNotFoundError(path)
 
     from merkl.future import Future
     md5_hash = fetch_or_compute_md5(path, store=True)
