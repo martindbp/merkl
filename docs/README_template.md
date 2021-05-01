@@ -167,7 +167,7 @@ outs:
 
 ${TABLE3}
 
-If all else fails, you can set `outs` to any positive integer.
+If all else fails, you can set `outs` to any positive integer or an iterable of output dictionary keys.
 
 ### Pipe syntax
 

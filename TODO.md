@@ -1,7 +1,5 @@
 Add a "code_version" parameter to task which supersedes any code hash, but not deps
 
-Allow outs to be a list/set of keys for a dict out
-
 Add --no-cache option
 
 Add type hints / mypy

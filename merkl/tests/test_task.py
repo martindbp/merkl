@@ -166,6 +166,26 @@ class TestTask(TestCaseWithMerklRepo):
                 key = 'out1'
                 return {key: 3, 'out2': input_value}
 
+        # Test that `outs` can be set to an iterable of string keys
+        @task(outs=['out1', 'out2'])
+        def _task7(input_value):
+            outs =  {'out1': 3, 'out2': input_value}
+            return outs
+
+        outs = _task7(2)
+        self.assertEqual(outs['out1'].eval(), 3)
+        self.assertEqual(outs['out2'].eval(), 2)
+
+        # Test that the above works if the keys are returned in a lambda
+        @task(outs=lambda input_value: ['out1', 'out2'])
+        def _task7(input_value):
+            outs =  {'out1': 3, 'out2': input_value}
+            return outs
+
+        outs = _task7(2)
+        self.assertEqual(outs['out1'].eval(), 3)
+        self.assertEqual(outs['out2'].eval(), 2)
+
     def test_pipelines(self):
         @task(outs=lambda input_values: len(input_values))
         def _task1(input_values):

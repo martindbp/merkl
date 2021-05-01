@@ -37,10 +37,39 @@ def code_hash(f, is_module=False):
     return m.hexdigest()
 
 
+def resolve_outs_and_return_type(outs, args, kwargs, return_type):
+    resolved_outs = outs(*args, **kwargs) if callable(outs) else outs
+    is_iterable = (
+        isinstance(resolved_outs, tuple) or
+        isinstance(resolved_outs, set) or
+        isinstance(resolved_outs, list)
+    )
+    if is_iterable:
+        return_type = 'Dict'
+
+    validate_outs(resolved_outs, return_type=return_type)
+
+    enumerated_outs = None
+    if is_iterable:
+        enumerated_outs = resolved_outs
+    elif isinstance(resolved_outs, int):
+        enumerated_outs = range(resolved_outs)
+    else:
+        raise ValueError
+
+    return resolved_outs, enumerated_outs, return_type
+
+
 def validate_outs(outs, sig=None, return_type=None):
     if isinstance(outs, int):
         if outs <= 0:
             raise TaskOutsError(f'Outs: {outs} is not >= 1')
+    elif isinstance(outs, list) or isinstance(outs, tuple) or isinstance(outs, set):
+        for key in outs:
+            if not isinstance(key, str):
+                raise TaskOutsError(f'Out key is not a string: {key}')
+        if return_type != 'Dict' and not sig:
+            raise TaskOutsError(f'Out is list/tuple/set of keys but return type is not dict: {return_type}')
     elif callable(outs) and sig is not None:
         outs_sig = signature(outs)
         if outs_sig.parameters.keys() != sig.parameters.keys():
@@ -212,14 +241,13 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCach
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
 
-        resolved_outs = outs(*args, **kwargs) if callable(outs) else outs
-        validate_outs(resolved_outs, return_type=return_type)
-
-        enumerated_outs = resolved_outs if isinstance(resolved_outs, tuple) else range(resolved_outs)
+        resolved_outs, enumerated_outs, resolved_return_type = resolve_outs_and_return_type(
+            outs, args, kwargs, return_type
+        )
 
         outputs = {}
         outs_shared_cache = {}
-        is_single = resolved_outs == 1 and return_type not in ['Tuple', 'Dict']
+        is_single = resolved_outs == 1 and resolved_return_type not in ['Tuple', 'Dict']
         for out_name in enumerated_outs:
             if serializer is None:
                 out_serializer = pickle
@@ -246,7 +274,7 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCach
 
         if is_single:
             return outputs[0]
-        return outputs if return_type == 'Dict' else tuple(outputs.values())
+        return outputs if resolved_return_type == 'Dict' else tuple(outputs.values())
 
     wrap.is_merkl = True
     wrap.type = 'task'
