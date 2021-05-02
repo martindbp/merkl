@@ -2,6 +2,7 @@ import os
 import sqlite3
 from typing import NamedTuple
 
+NO_CACHE = False
 
 def get_merkl_path():
     from merkl.io import cwd
@@ -39,7 +40,13 @@ class SqliteCache:
     @classmethod
     def connect(cls):
         if cls.connection is None:
-            cls.connection = sqlite3.connect(get_db_path())
+            try:
+                cls.connection = sqlite3.connect(get_db_path())
+            except sqlite3.OperationalError:
+                if not os.path.exists(get_merkl_path()):
+                    print(".merkl doesn't exist, did you run 'merkl init'?")
+                    exit(1)
+                raise
             cls.cursor = cls.connection.cursor()
 
     @classmethod

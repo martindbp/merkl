@@ -43,6 +43,7 @@ def main():
     run_parser = subparsers.add_parser(
         'run', description='Run a task or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
+    run_parser.add_argument('--no-cache', action='store_true', help='Disable caching')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
 
     # ------------- DAG --------------
@@ -50,6 +51,7 @@ def main():
         'dot', description='Output the DAG of a task or pipeline as a dot file')
     dot_parser.set_defaults(command='dot', subcommand='dot')
     dot_parser.add_argument('--rankdir', choices=['TB', 'LR'], help='Value for the rankdir dot graph parameter')
+    dot_parser.add_argument('--no-cache', action='store_true', help='Disable caching')
     dot_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
 
     args, unknown_args = parser.parse_known_args()

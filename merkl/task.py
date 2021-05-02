@@ -7,6 +7,7 @@ from enum import Enum
 from functools import lru_cache
 from sigtools.specifiers import forwards_to_function
 from inspect import signature, getsource, isfunction, ismodule, getmodule
+import merkl
 from merkl.utils import (
     doublewrap,
     nested_map,
@@ -169,7 +170,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
 
                 # Override cache and serializer
                 if cache:
-                    specific_out.cache = cache
+                    specific_out.cache = cache if not merkl.cache.NO_CACHE else None
                 if serializer:
                     specific_out.serializer = serializer
 
@@ -262,7 +263,7 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCach
                 resolved_outs,
                 None if is_single else out_name,
                 deps,
-                cache,
+                cache if not merkl.cache.NO_CACHE else None,
                 out_serializer,
                 bound_args,
                 outs_shared_cache,
@@ -311,7 +312,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
             1,
             None,
             deps,
-            cache,
+            cache if not merkl.cache.NO_CACHE else None,
             pickle,
             bound_args,
             is_pipeline=True,

@@ -1,7 +1,5 @@
 Add a "code_version" parameter to task which supersedes any code hash, but not deps
 
-Add --no-cache option
-
 Add type hints / mypy
     Attach a type hint to Future, check for equality when passing in to other tasks
     Use typeguard to check constant inputs and return values
