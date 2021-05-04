@@ -1,8 +1,9 @@
 import os
-import pathlib
 import shutil
+from pathlib import Path
 from functools import partial
 from datetime import datetime
+from tempfile import mkstemp, mkdtemp
 from merkl.utils import get_hash_memory_optimized
 from merkl.cache import SqliteCache
 from merkl.exceptions import SerializationError
@@ -58,6 +59,8 @@ def fetch_or_compute_md5(path, store=True):
 def write_track_file(path, content_bytes, merkl_hash):
     if isinstance(content_bytes, FileOut):
         shutil.copy(content_bytes.path, path)
+    elif isinstance(content_bytes, DirOut):
+        shutil.copytree(content_bytes.path, path)
     else:
         with open(path, 'wb') as f:
             f.write(content_bytes)
@@ -68,9 +71,18 @@ def write_track_file(path, content_bytes, merkl_hash):
 
 
 class FileOut:
-    def __init__(self, path, rm_after_caching=False):
-        self.path = path
-        self.rm_after_caching = rm_after_caching
+    def __init__(self, path=None, ext=None, rm_after_caching=False):
+        if path is None:
+            suffix = None if ext is None else f'.{ext}'
+            _, self.path = mkstemp(suffix=suffix)
+            self.rm_after_caching = True  # always remove temporary files
+            self.ext = ext
+        else:
+            self.path = path
+            self.rm_after_caching = rm_after_caching
+            splits = path.split('.')
+            if len(splits) > 1:
+                self.ext = splits[-1]
 
     def __str__(self):
         return self.path
@@ -78,18 +90,33 @@ class FileOut:
     def __repr__(self):
         return f'<FileOut {self.path}>'
 
-    def __getstate__(self):
-        # Prevent trying to serialize with pickle (without FileOutSerializer)
-        raise SerializationError('To return a "FileOut", set the FileOutSerializer as the task serializer')
 
+class DirOut:
+    def __init__(self, path=None, rm_after_caching=False):
+        if path is None:
+            self.path = mkdtemp()
+            self.rm_after_caching = True  # always remove temporary files
+        else:
+            self.path = path
+            self.rm_after_caching = rm_after_caching
 
-class FileOutSerializer:
-    @classmethod
-    def dumps(cls, file_out):
-        if not os.path.exists(file_out.path):
-            raise ValueError(f'FileOut {file_out.path} does not exist')
-        return file_out
+        self._files = []
 
-    @classmethod
-    def loads(cls, data):
-        return FileOut(data.decode('utf-8').removeprefix('<FileOut ').removesuffix('>'))
+    def get_new_file(self, name=None, ext=None):
+        if name is not None:
+            return str(Path(self.path) / name)
+
+        suffix = None if ext is None else f'.{ext}'
+        _, file_path = mkstemp(suffix=suffix, dir=self.path)
+        self._files.append(Path(file_path).name)
+        return file_path
+
+    @property
+    def files(self):
+        return [str(Path(self.path) / name) for name in self._files]
+
+    def __str__(self):
+        return self.path
+
+    def __repr__(self):
+        return f'<DirOut {self.path}>'

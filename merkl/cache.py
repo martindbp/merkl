@@ -1,4 +1,6 @@
 import os
+import shutil
+import pickle
 import sqlite3
 from typing import NamedTuple
 
@@ -25,6 +27,14 @@ def get_cache_file_path(hash, ext='bin', makedirs=False):
     if makedirs:
         os.makedirs(cache_dir, exist_ok=True)
     return f'{cache_dir}{hash}.{ext}'
+
+
+def get_cache_out_dir_path(hash, makedirs=False):
+    cache_dir = get_cache_dir_path(hash)
+    if makedirs:
+        os.makedirs(cache_dir, exist_ok=True)
+    cache_dir = f'{cache_dir}{hash}/'
+    return cache_dir
 
 
 def get_modified_time(path):
@@ -75,20 +85,33 @@ class SqliteCache:
         """)
 
     @classmethod
-    def add(cls, hash, content_bytes=None):
+    def transfer_file_out(cls, file_out, hash):
+        """ Transfers a FileOut from the original place in the file system to the merkl cache, and returns
+        the new FileOut with the new path """
         from merkl.io import FileOut
-        if isinstance(content_bytes, FileOut):
-            file_out = content_bytes
-            ext = file_out.path.split('.')[-1]
-            cache_file_path = get_cache_file_path(hash, ext, makedirs=True)
-            os.link(file_out.path, cache_file_path)
-            orig_path = file_out.path
-            file_out.path = cache_file_path
-            content_bytes = f'<FileOut {file_out.path}>'.encode()
-            if file_out.rm_after_caching:
-                os.remove(orig_path)
+        ext = file_out.ext
+        cache_file_path = get_cache_file_path(hash, ext, makedirs=True)
+        os.link(file_out.path, cache_file_path)
+        new_file_out = FileOut(cache_file_path)
+        if file_out.rm_after_caching:
+            os.remove(file_out.path)
+        return new_file_out
 
+    @classmethod
+    def transfer_dir_out(cls, dir_out, hash):
+        """ Transfers a DirOut from the original place in the file system to the merkl cache, and returns
+        the new DirOut with the new path """
+        from merkl.io import DirOut
+        cache_dir_path = get_cache_out_dir_path(hash, makedirs=True)
+        shutil.copytree(dir_out.path, cache_dir_path)
+        if dir_out.rm_after_caching:
+            shutil.rmtree(dir_out.path)
 
+        dir_out.path = cache_dir_path
+        return dir_out
+
+    @classmethod
+    def add(cls, hash, content_bytes=None):
         cls.connect()
         cls.cursor.execute("INSERT INTO cache VALUES (?, ?)", (hash, content_bytes))
         cls.connection.commit()

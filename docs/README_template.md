@@ -24,8 +24,7 @@ through the `dot` and `visualize` programs (note that these require that graphvi
 Arguments can be passed to the pipeline through the `run` command. See [clize](https://clize.readthedocs.io/en/stable/)
 for more information on how to pass parameters from the command line.
 
-To specify that results should be cached, `--cache` option can be supplied. If we run the pipeline twice with this parameter, the values will now be cached,
-which is indicated by green hashes in the graph. Changing the code in `task2`, for example by changing the `2` to a `3`, we can see that the output value is
+By default, all computed outputs are cached, unless the `--no-cache` option is supplied. If we run the pipeline a second time, we can see that the hashes turn green, which indicates that the values are already in the cache. Changing the code in `task2`, for example by changing the `2` to a `3`, we can see that the output value is
 not cached anymore:
 
 <table>
@@ -63,10 +62,10 @@ ${TABLE2}
 
 In order to compute the recursive Merkle hashes, the content (md5) hash of the
 input files are needed. MerkL hashes these on demand as they are needed, but
-stores these hashes in the .merkl/cache.sqlite3 database. If the timestamp of
+stores these hashes in the `.merkl/cache.sqlite3` database. If the timestamp of
 the file ever changes, the file is hashed again.
 
-For files with exif metadata like jpg and png images, the md5 content hash can be stored
+Files created by MerkL tasks or pipelines are also tracked in the database so that MerkL knows if a file needs to be updated or not.
 
 ### Multiple outs
 

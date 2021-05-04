@@ -2,7 +2,7 @@ import json
 import hashlib
 from collections import defaultdict
 import merkl.cache
-from merkl.io import write_track_file, write_future
+from merkl.io import write_track_file, write_future, FileOut, DirOut
 from merkl.utils import OPERATORS, nested_map, nested_collect
 from merkl.cache import get_modified_time
 from merkl.exceptions import *
@@ -137,6 +137,17 @@ class Future:
 
             return self.serializer.loads(val)
 
+    def map_transfer_outs(self, out):
+        if self.cache is None:
+            return out
+
+        if isinstance(out, FileOut):
+            return self.cache.transfer_file_out(out, self.hash)
+        elif isinstance(out, DirOut):
+            return self.cache.transfer_dir_out(out, self.hash)
+
+        return out
+
     def eval(self):
         specific_out = None
         outputs = None
@@ -149,6 +160,10 @@ class Future:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
+
+            # Transfer FileOuts and DirOuts to the cache file system
+            outputs = nested_map(outputs, self.map_transfer_outs)
+
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
 
