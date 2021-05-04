@@ -16,6 +16,7 @@ from merkl.utils import (
     find_function_deps,
     FunctionDep,
     get_hash_memory_optimized,
+    log
 )
 from merkl.future import Future
 from merkl.exceptions import *
@@ -84,9 +85,10 @@ def validate_resolve_deps(deps):
     extra_deps = []
     for dep in deps:
         if isfunction(dep) and hasattr(dep, 'is_merkl') and dep.type == 'task':
-            extra_deps += dep.deps
+            extra_deps += validate_resolve_deps(dep.deps)
 
-    for i in range(len(deps)):
+    resolved_deps = []
+    for i in range(len(deps + extra_deps)):
         name = None
         dep = deps[i]
         if isinstance(dep, FunctionDep):
@@ -96,21 +98,33 @@ def validate_resolve_deps(deps):
         if isfunction(dep):
             if hasattr(dep, 'is_merkl') and dep.type == 'task':
                 dep = dep.__wrapped__
-            deps[i] = f'<Function {dep.__name__}: {code_hash(dep)}>'
+            try:
+                dep = f'<Function {dep.__name__}: {code_hash(dep)}>'
+            except OSError:  # source code not available
+                log(f'No source code found for dep: {dep}')
+                continue
         elif ismodule(dep):
-            deps[i] = f'<Module {dep.__name__}: {code_hash(dep, is_module=True)}>'
+            try:
+                dep = f'<Module {dep.__name__}: {code_hash(dep, is_module=True)}>'
+            except OSError:  # source code not available
+                log(f'No source code found for dep: {dep}')
+                continue
         elif isinstance(dep, bytes):
-            deps[i] = dep.decode('utf-8')
+            dep = dep.decode('utf-8')
         elif isinstance(dep, Future):
-            deps[i] =  f'<Future {dep.hash}>'
+            dep =  f'<Future {dep.hash}>'
         elif not isinstance(dep, str):
             try:
-                deps[i] = json.dumps(dep)
+                dep = json.dumps(dep)
             except TypeError:
                 raise SerializationError(f'Task dependency {dep} not serializable to JSON')
-        if name is not None:
-            deps[i] = (name, deps[i])
 
+        if name is not None:
+            resolved_deps.append((name, dep))
+        else:
+            resolved_deps.append(dep)
+
+    return resolved_deps + extra_deps
 
 @doublewrap
 def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, serializer=None):
@@ -234,7 +248,7 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCach
     if hash_mode == HashMode.FIND_DEPS:
         deps += find_function_deps(f)
 
-    validate_resolve_deps(deps)
+    deps = validate_resolve_deps(deps)
 
     @forwards_to_function(f)
     def wrap(*args, **kwargs):
@@ -298,7 +312,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
     if hash_mode == HashMode.FIND_DEPS:
         deps += find_function_deps(f)
 
-    validate_resolve_deps(deps)
+    deps = validate_resolve_deps(deps)
 
     @forwards_to_function(f)
     def wrap(*args, **kwargs):

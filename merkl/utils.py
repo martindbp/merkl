@@ -11,6 +11,8 @@ from sigtools.specifiers import forwards_to_function
 import merkl
 from merkl.exceptions import TaskOutsError
 
+DEBUG = False
+
 BUILTIN_MODULES = stdlib_list()
 
 OPERATORS = [
@@ -152,3 +154,8 @@ def get_function_return_info(f):
         return_types.append(type_name)
 
     return set(return_types), set(num_returns)
+
+
+def log(s):
+    if DEBUG:
+        print(s)
