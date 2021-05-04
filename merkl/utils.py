@@ -1,14 +1,17 @@
-import hashlib
+import sys
 import ast
 import inspect
+import hashlib
 import textwrap
 from inspect import getmodule
 from inspect import isfunction
 from typing import NamedTuple
+from stdlib_list import stdlib_list
 from sigtools.specifiers import forwards_to_function
 import merkl
 from merkl.exceptions import TaskOutsError
 
+BUILTIN_MODULES = stdlib_list()
 
 OPERATORS = [
     '__bool__', '__not__', '__lt__', '__le__', '__eq__', '__ne__', '__ge__', 'truth', 'is_', 'is_not',
@@ -86,8 +89,16 @@ def find_function_deps(f):
             continue  # skip references to merkl stuff
 
         dep = module.__dict__.get(node.id)
-        if dep:
-            deps.append(FunctionDep(node.id, dep))
+
+        if dep is None:
+            continue
+
+        # Skip stuff defined in builtin modules
+        dep_module = inspect.getmodule(dep)
+        if dep_module and dep_module.__name__ in BUILTIN_MODULES:
+            continue
+
+        deps.append(FunctionDep(node.id, dep))
 
     return deps
 
