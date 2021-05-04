@@ -1,5 +1,6 @@
 import os
 import unittest
+from pathlib import Path
 from merkl import *
 from merkl.exceptions import *
 from merkl.tests import TestCaseWithMerklRepo
@@ -106,6 +107,21 @@ class TestCache(TestCaseWithMerklRepo):
             with open(filename, 'r') as f:
                 self.assertEqual(f.read(), f'test{i}')
 
+        # Test load_files()
+        @task
+        def my_task():
+            dir_out = DirOut()
+            for i in range(5):
+                filename = str(Path(dir_out.path) / f'file{i}.txt')
+                with open(filename, 'w') as f:
+                    f.write(f'test{i}')
+
+            dir_out.load_files()
+            self.assertEqual(len(dir_out.files), 5)
+
+            return dir_out
+
+        my_task().eval()
 
 if __name__ == '__main__':
     unittest.main()

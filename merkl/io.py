@@ -115,6 +115,10 @@ class DirOut:
     def files(self):
         return [str(Path(self.path) / name) for name in self._files]
 
+    def load_files(self):
+        """ Load filenames from the file system """
+        self._files = os.listdir(self.path)
+
     def __str__(self):
         return self.path
 
