@@ -86,28 +86,32 @@ class SqliteCache:
 
     @classmethod
     def transfer_file_out(cls, file_out, hash):
-        """ Transfers a FileOut from the original place in the file system to the merkl cache, and returns
-        the new FileOut with the new path """
-        from merkl.io import FileOut
-        ext = file_out.ext
+        """ Transfers a FileRef from the original place in the file system to the merkl cache, and returns
+        the new FileRef with the new path """
+        from merkl.io import FileRef
+        splits = file_out.split('.')
+        ext = None if len(splits) == 1 else splits[-1]
         cache_file_path = get_cache_file_path(hash, ext, makedirs=True)
-        os.link(file_out.path, cache_file_path)
-        new_file_out = FileOut(cache_file_path)
+        if os.path.exists(cache_file_path):
+            os.remove(cache_file_path)
+
+        os.link(file_out, cache_file_path)
+        new_file_out = FileRef(cache_file_path)
         if file_out.rm_after_caching:
-            os.remove(file_out.path)
+            os.remove(file_out)
         return new_file_out
 
     @classmethod
     def transfer_dir_out(cls, dir_out, hash):
-        """ Transfers a DirOut from the original place in the file system to the merkl cache, and returns
-        the new DirOut with the new path """
-        from merkl.io import DirOut
+        """ Transfers a DirRef from the original place in the file system to the merkl cache, and returns
+        the new DirRef with the new path """
+        from merkl.io import DirRef
         cache_dir_path = get_cache_out_dir_path(hash, makedirs=True)
-        shutil.copytree(dir_out.path, cache_dir_path)
+        shutil.copytree(dir_out, cache_dir_path)
         if dir_out.rm_after_caching:
-            shutil.rmtree(dir_out.path)
+            shutil.rmtree(dir_out)
 
-        dir_out.path = cache_dir_path
+        dir_out = DirRef(cache_dir_path, files=dir_out._files)
         return dir_out
 
     @classmethod

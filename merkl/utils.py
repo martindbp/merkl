@@ -44,29 +44,43 @@ def doublewrap(f):
     return new_dec
 
 
-def nested_map(structure, map_function, convert_tuples_to_lists=False):
+def nested_map(structure, map_function, convert_tuples_to_lists=False, include_level=False, curr_level=0):
     if isinstance(structure, tuple):
-        new_tuple = [nested_map(s, map_function) for s in structure]
+        new_tuple = [
+            nested_map(s, map_function, convert_tuples_to_lists, include_level, curr_level+1)
+            for s in structure
+        ]
         if convert_tuples_to_lists:
             return new_tuple
         return tuple(new_tuple)
     elif isinstance(structure, list):
-        return [nested_map(s, map_function) for s in structure]
+        return [
+            nested_map(s, map_function, convert_tuples_to_lists, include_level, curr_level+1)
+            for s in structure
+        ]
     elif isinstance(structure, dict):
-        return {key: nested_map(val, map_function) for key, val in structure.items()}
+        return {
+            key: nested_map(val, map_function, convert_tuples_to_lists, include_level, curr_level+1)
+            for key, val in structure.items()
+        }
 
-    return map_function(structure)
+    args = [structure]
+    if include_level:
+        args.append(curr_level)
+
+    return map_function(*args)
 
 
-def nested_collect(structure, collect_function):
+def nested_collect(structure, collect_function, include_level=False):
     collected = []
-    def _collect(val):
-        if collect_function(val):
-            collected.append(val)
+    def _collect(*args):
+        arg = args if len(args) > 1 else args[0]
+        if collect_function(*args):
+            collected.append(arg)
 
-        return val
+        return arg
 
-    nested_map(structure, _collect)
+    nested_map(structure, _collect, include_level=include_level)
     return collected
 
 

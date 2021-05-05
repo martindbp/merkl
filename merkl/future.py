@@ -2,7 +2,7 @@ import json
 import hashlib
 from collections import defaultdict
 import merkl.cache
-from merkl.io import write_track_file, write_future, FileOut, DirOut
+from merkl.io import write_track_file, write_future, FileRef, DirRef
 from merkl.utils import OPERATORS, nested_map, nested_collect
 from merkl.cache import get_modified_time
 from merkl.exceptions import *
@@ -141,9 +141,9 @@ class Future:
         if self.cache is None:
             return out
 
-        if isinstance(out, FileOut):
+        if isinstance(out, FileRef):
             return self.cache.transfer_file_out(out, self.hash)
-        elif isinstance(out, DirOut):
+        elif isinstance(out, DirRef):
             return self.cache.transfer_dir_out(out, self.hash)
 
         return out
@@ -161,9 +161,6 @@ class Future:
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
 
-            # Transfer FileOuts and DirOuts to the cache file system
-            outputs = nested_map(outputs, self.map_transfer_outs)
-
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
 
@@ -179,6 +176,15 @@ class Future:
                 outputs = outputs[self.out_name]
 
             specific_out = outputs
+            deep_file_dir_outs = nested_collect(
+                specific_out,
+                lambda out, lvl: (isinstance(out, FileRef) or isinstance(out, DirRef)) and lvl >= 1,
+                include_level=True,
+            )
+            if len(deep_file_dir_outs) > 0:
+                raise ValueError('FileRef and DirRef cannot be deeply nested in a task out')
+
+            specific_out = self.map_transfer_outs(specific_out)
 
         if self.is_pipeline:
             # Set the pipeline function on all output futures
@@ -187,7 +193,7 @@ class Future:
 
         if not self.is_input:  # Futures from io should not be cached (but is read from cache)
             specific_out_bytes = None
-            if self.cache is not None and not self.in_cache():
+            if self.cache is not None and not is_cached:
                 specific_out_bytes = self.serializer.dumps(specific_out)
                 self.cache.add(self.hash, specific_out_bytes)
 

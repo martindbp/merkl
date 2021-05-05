@@ -4,7 +4,7 @@ from pathlib import Path
 from merkl import *
 from merkl.exceptions import *
 from merkl.tests import TestCaseWithMerklRepo
-from merkl.io import FileOut, DirOut
+from merkl.io import FileRef, DirRef
 from merkl.cache import get_cache_file_path, SqliteCache
 
 
@@ -36,7 +36,7 @@ class TestCache(TestCaseWithMerklRepo):
         def my_task():
             with open(filename, 'w') as f:
                 f.write('test')
-            return FileOut(filename)
+            return FileRef(filename)
 
         out = my_task()
         out.eval()
@@ -50,31 +50,54 @@ class TestCache(TestCaseWithMerklRepo):
         def my_task():
             with open(filename, 'w') as f:
                 f.write('test')
-            return FileOut(filename, rm_after_caching=True)
+            return FileRef(filename, rm_after_caching=True)
 
         f = my_task().eval()
         self.assertFalse(os.path.exists(filename))
-        self.assertNotEqual(f.path, filename)
+        self.assertNotEqual(f, filename)
         # Check that extension of file in cache is the same
-        self.assertEqual(f.path.split('.')[-1], filename.split('.')[-1])
+        self.assertEqual(f.split('.')[-1], filename.split('.')[-1])
 
         self.assertTrue(my_task().in_cache())
-        self.assertNotEqual(my_task().eval().path, filename)
-        self.assertEqual(my_task().eval().path.split('.')[-1], 'txt')
+        self.assertNotEqual(my_task().eval(), filename)
+        self.assertEqual(my_task().eval().split('.')[-1], 'txt')
 
         # Check that temporary unnamed files work
         @task
         def my_task():
-            file_out = FileOut(ext='txt')
-            with open(file_out.path, 'w') as f:
+            file_out = FileRef(ext='txt')
+            with open(file_out, 'w') as f:
                 f.write('test')
             return file_out
 
-        path = my_task().eval().path
+        path = my_task().eval()
         self.assertTrue(path.endswith('.txt'))
 
         with open(path, 'r') as f:
             self.assertEqual(f.read(), 'test')
+
+        @task
+        def my_task_single(arg):
+            return arg, arg
+
+        # Had a problem where both FileRefs from a batch task had same hash
+        @batch(my_task_single)
+        def my_task(args):
+            files = []
+            for arg in args:
+                a = FileRef()
+                with open(a, 'w') as f:
+                    f.write('{arg} a')
+                b = FileRef()
+                with open(b, 'w') as f:
+                    f.write('{arg} b')
+                files.append((a, b))
+            return files
+
+        files = my_task(['arg1', 'arg2', 'arg3'])
+        for file_a, file_b in files:
+            self.assertNotEqual(file_a.hash, file_b.hash)
+            self.assertNotEqual(file_a.eval(), file_b.eval())
 
     def test_dir_outs(self):
         filenames = []
@@ -82,7 +105,7 @@ class TestCache(TestCaseWithMerklRepo):
         @task
         def my_task():
             nonlocal filenames
-            dir_out = DirOut()
+            dir_out = DirRef()
 
             for i in range(5):
                 filename = dir_out.get_new_file(ext='txt')
@@ -110,9 +133,9 @@ class TestCache(TestCaseWithMerklRepo):
         # Test load_files()
         @task
         def my_task():
-            dir_out = DirOut()
+            dir_out = DirRef()
             for i in range(5):
-                filename = str(Path(dir_out.path) / f'file{i}.txt')
+                filename = str(Path(dir_out) / f'file{i}.txt')
                 with open(filename, 'w') as f:
                     f.write(f'test{i}')
 

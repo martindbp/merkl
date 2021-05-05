@@ -1,5 +1,6 @@
 import os
 import shutil
+import collections
 from pathlib import Path
 from functools import partial
 from datetime import datetime
@@ -57,10 +58,10 @@ def fetch_or_compute_md5(path, store=True):
 
 
 def write_track_file(path, content_bytes, merkl_hash):
-    if isinstance(content_bytes, FileOut):
-        shutil.copy(content_bytes.path, path)
-    elif isinstance(content_bytes, DirOut):
-        shutil.copytree(content_bytes.path, path)
+    if isinstance(content_bytes, FileRef):
+        shutil.copy(content_bytes, path)
+    elif isinstance(content_bytes, DirRef):
+        shutil.copytree(content_bytes, path)
     else:
         with open(path, 'wb') as f:
             f.write(content_bytes)
@@ -70,57 +71,57 @@ def write_track_file(path, content_bytes, merkl_hash):
     SqliteCache.add_file(path, merkl_hash=merkl_hash)
 
 
-class FileOut:
-    def __init__(self, path=None, ext=None, rm_after_caching=False):
+class FileRef(str):
+    def __new__(cls, path=None, ext='.bin', rm_after_caching=False):
         if path is None:
             suffix = None if ext is None else f'.{ext}'
-            _, self.path = mkstemp(suffix=suffix)
-            self.rm_after_caching = True  # always remove temporary files
-            self.ext = ext
-        else:
-            self.path = path
-            self.rm_after_caching = rm_after_caching
-            splits = path.split('.')
-            if len(splits) > 1:
-                self.ext = splits[-1]
+            _, path = mkstemp(suffix=suffix)
 
-    def __str__(self):
-        return self.path
+        return str.__new__(cls, path)
+
+    def __init__(self, path=None, ext='.bin', rm_after_caching=False):
+        if path is None:
+            self.rm_after_caching = True  # always remove temporary files
+        else:
+            self.rm_after_caching = rm_after_caching
 
     def __repr__(self):
-        return f'<FileOut {self.path}>'
+        return f'<FileRef {self}>'
 
 
-class DirOut:
-    def __init__(self, path=None, rm_after_caching=False):
+class DirRef(str):
+    def __new__(cls, path=None, rm_after_caching=False, files=None):
         if path is None:
-            self.path = mkdtemp()
+            path = mkdtemp()
+            os.makedirs(path, exist_ok=True)
+
+        return str.__new__(cls, path)
+
+
+    def __init__(self, path=None, rm_after_caching=False, files=None):
+        if path is None:
             self.rm_after_caching = True  # always remove temporary files
         else:
-            self.path = path
             self.rm_after_caching = rm_after_caching
 
-        self._files = []
+        self._files = [] if files is None else files
 
     def get_new_file(self, name=None, ext=None):
         if name is not None:
-            return str(Path(self.path) / name)
+            return str(Path(self) / name)
 
         suffix = None if ext is None else f'.{ext}'
-        _, file_path = mkstemp(suffix=suffix, dir=self.path)
+        _, file_path = mkstemp(suffix=suffix, dir=self)
         self._files.append(Path(file_path).name)
         return file_path
 
     @property
     def files(self):
-        return [str(Path(self.path) / name) for name in self._files]
+        return [str(Path(self) / name) for name in self._files]
 
     def load_files(self):
         """ Load filenames from the file system """
-        self._files = os.listdir(self.path)
-
-    def __str__(self):
-        return self.path
+        self._files = os.listdir(self)
 
     def __repr__(self):
-        return f'<DirOut {self.path}>'
+        return f'<DirRef {self}>'

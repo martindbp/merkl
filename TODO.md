@@ -1,3 +1,7 @@
+Allow files to be seperately tracked if a function returns a single DirOut, use out keys as filenames
+
+clize parameters doesn't work for pipelines
+
 Add a "code_version" parameter to task which supersedes any code hash, but not deps
 
 Add type hints / mypy
