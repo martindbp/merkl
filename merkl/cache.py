@@ -1,6 +1,5 @@
 import os
 import shutil
-import pickle
 import sqlite3
 from typing import NamedTuple
 

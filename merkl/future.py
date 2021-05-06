@@ -22,7 +22,7 @@ def map_future_to_value(val):
     return val
 
 
-FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'serializer']
+FUTURE_STATE_EXCLUDED = ['bound_args', 'fn']
 
 class Future:
     __slots__ = [
@@ -228,7 +228,7 @@ class Future:
 
         # When we pickle a Future (for returning from pipelines), we don't want to pickle the whole graph and
         # potentially large data, so exclude `bound_args` which may contain futures
-        # Also, the function may not be pickleable, as well as the serializer
+        # Also, the function may not be pickleable, and we don't need it when loading a cached Future
         state = {s: getattr(self, s, None) for s in self.__slots__ if s not in FUTURE_STATE_EXCLUDED}
 
         return state

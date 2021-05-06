@@ -146,5 +146,15 @@ class TestCache(TestCaseWithMerklRepo):
 
         my_task().eval()
 
+    def test_future_serialization(self):
+        @task
+        def my_task():
+            return 3
+
+        future = my_task()
+        serialized = future.serializer.dumps(future)
+        unserialized = future.serializer.loads(serialized)
+        self.assertEqual(unserialized.serializer, future.serializer)
+
 if __name__ == '__main__':
     unittest.main()

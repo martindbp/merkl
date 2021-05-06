@@ -1,7 +1,7 @@
 import json
 import hashlib
 import textwrap
-import pickle
+import dill
 from pathlib import Path
 from enum import Enum
 from functools import lru_cache
@@ -264,7 +264,10 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCach
         is_single = resolved_outs == 1 and resolved_return_type not in ['Tuple', 'Dict']
         for out_name in enumerated_outs:
             if serializer is None:
-                out_serializer = pickle
+                # NOTE: we use dill instead of pickle as default, because dill can serialize a reference to
+                # itself, while pickle can't. This is a problem when we want to serialize a Future(e.g. when
+                # caching pipeline results)
+                out_serializer = dill
             elif isinstance(serializer, dict):
                 out_serializer = serializer[out_name]
             else:
@@ -326,7 +329,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
             None,
             deps,
             cache if not merkl.cache.NO_CACHE else None,
-            pickle,
+            dill,
             bound_args,
             is_pipeline=True,
             invocation_id=next_invocation_id,
