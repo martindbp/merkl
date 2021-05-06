@@ -1,10 +1,11 @@
 import sys
 import ast
+import json
 import inspect
 import hashlib
 import textwrap
 from inspect import getmodule
-from inspect import isfunction
+from inspect import isfunction, ismodule
 from typing import NamedTuple
 from stdlib_list import stdlib_list
 from sigtools.specifiers import forwards_to_function
@@ -108,6 +109,14 @@ def find_function_deps(f):
 
         if dep is None:
             continue
+
+        if not isfunction(dep) and not ismodule(dep):
+            # Functions and modules are special cases, but anything else
+            # that is not serializable to json we skip
+            try:
+                json.dumps(dep)
+            except TypeError:
+                continue
 
         # Skip stuff defined in builtin modules
         dep_module = inspect.getmodule(dep)
