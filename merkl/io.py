@@ -1,10 +1,11 @@
 import os
+import uuid
 import shutil
 import collections
 from pathlib import Path
 from functools import partial
 from datetime import datetime
-from tempfile import mkstemp, mkdtemp
+from tempfile import mkdtemp
 from merkl.utils import get_hash_memory_optimized
 from merkl.cache import SqliteCache
 from merkl.exceptions import SerializationError
@@ -16,6 +17,13 @@ cwd = ''
 def _get_file_content(path, flags):
     with open(path, 'r'+flags) as f:
         return f.read()
+
+
+def _get_tmp_filename(suffix='', dir='/tmp/'):
+    path = None
+    while path is None or os.path.exists(path):
+        path = str(Path(dir) / f'{uuid.uuid4().hex}{suffix}')
+    return path
 
 
 def path_future(path):
@@ -72,10 +80,10 @@ def write_track_file(path, content_bytes, merkl_hash):
 
 
 class FileRef(str):
-    def __new__(cls, path=None, ext='.bin', rm_after_caching=False):
+    def __new__(cls, path=None, ext='bin', rm_after_caching=False):
         if path is None:
             suffix = None if ext is None else f'.{ext}'
-            _, path = mkstemp(suffix=suffix)
+            path = _get_tmp_filename(suffix=suffix)
 
         return str.__new__(cls, path)
 
@@ -111,7 +119,7 @@ class DirRef(str):
             return str(Path(self) / name)
 
         suffix = None if ext is None else f'.{ext}'
-        _, file_path = mkstemp(suffix=suffix, dir=self)
+        file_path = _get_tmp_filename(suffix=suffix, dir=self)
         self._files.append(Path(file_path).name)
         return file_path
 
