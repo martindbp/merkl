@@ -11,8 +11,6 @@ from merkl.exceptions import *
 def map_to_hash(val):
     if isinstance(val, Future):
         return {'_hash': val.hash}
-    elif not (isinstance(val, str) or isinstance(val, int) or isinstance(val, float)):
-        raise SerializationError(f'Value {val} not serializable')
     return val
 
 
@@ -94,7 +92,10 @@ class Future:
             'function_deps': self.deps,
         }
         m = hashlib.sha256()
-        m.update(bytes(json.dumps(hash_data, sort_keys=True), 'utf-8'))
+        try:
+            m.update(bytes(json.dumps(hash_data, sort_keys=True), 'utf-8'))
+        except TypeError:
+            raise SerializationError(f'Value in args {hash_data} not JSON-serializable')
         self._code_args_hash = m.hexdigest()
         return self._code_args_hash
 

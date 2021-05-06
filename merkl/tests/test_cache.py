@@ -156,5 +156,13 @@ class TestCache(TestCaseWithMerklRepo):
         unserialized = future.serializer.loads(serialized)
         self.assertEqual(unserialized.serializer, future.serializer)
 
+    def test_none_inputs(self):
+        # This would break before when I did a manual check for value type serializability, leaving it here just in case
+        @task
+        def my_task(inpt=None):
+            return inpt
+
+        my_task().eval()
+
 if __name__ == '__main__':
     unittest.main()
