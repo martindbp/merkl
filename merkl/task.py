@@ -127,7 +127,7 @@ def validate_resolve_deps(deps):
     return resolved_deps + extra_deps
 
 @doublewrap
-def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, serializer=None):
+def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCache, serializer=None):
     if single_fn is None:
         raise BatchTaskError(f"'single_fn' has to be supplied")
 
@@ -213,7 +213,6 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, deps=None, cac
     wrap.is_merkl = True
     wrap.type = 'batch'
     wrap.outs = 1
-    wrap.deps = deps
     wrap.__wrapped__ = batch_fn
     return wrap
 
