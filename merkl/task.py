@@ -39,6 +39,18 @@ def code_hash(f, is_module=False):
     return m.hexdigest()
 
 
+def resolve_serializer(serializer, out_name):
+    if serializer is None:
+        # NOTE: we use dill instead of pickle as default, because dill can serialize a reference to
+        # itself, while pickle can't. This is a problem when we want to serialize a Future(e.g. when
+        # caching pipeline results)
+        return dill
+    elif isinstance(serializer, dict):
+        return serializer.get(out_name, dill)  # default to dill if key doesn't exist
+    else:
+        return serializer
+
+
 def resolve_outs_and_return_type(outs, args, kwargs, return_type):
     resolved_outs = outs(*args, **kwargs) if callable(outs) else outs
     is_iterable = (
@@ -186,7 +198,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
                 if cache:
                     specific_out.cache = cache if not merkl.cache.NO_CACHE else None
                 if serializer:
-                    specific_out.serializer = serializer
+                    specific_out.serializer = resolve_serializer(serializer, specific_out.out_name)
 
                 is_cached = is_cached or specific_out.in_cache()
                 if not is_cached:
@@ -263,15 +275,7 @@ def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCach
         outs_shared_cache = {}
         is_single = resolved_outs == 1 and resolved_return_type not in ['Tuple', 'Dict']
         for out_name in enumerated_outs:
-            if serializer is None:
-                # NOTE: we use dill instead of pickle as default, because dill can serialize a reference to
-                # itself, while pickle can't. This is a problem when we want to serialize a Future(e.g. when
-                # caching pipeline results)
-                out_serializer = dill
-            elif isinstance(serializer, dict):
-                out_serializer = serializer[out_name]
-            else:
-                out_serializer = serializer
+            out_serializer = resolve_serializer(serializer, out_name)
 
             output = Future(
                 f,
