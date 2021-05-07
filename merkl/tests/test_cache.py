@@ -164,5 +164,20 @@ class TestCache(TestCaseWithMerklRepo):
 
         my_task().eval()
 
+    def test_cache_temporarily(self):
+        @task
+        def my_task(a):
+            return 2*a
+
+        a = my_task(0)
+        a.cache_temporarily = True
+        a.eval()
+        self.assertTrue(a.in_cache())
+        b = my_task(a)
+        b.eval()
+        self.assertFalse(a.in_cache())
+        self.assertTrue(b.in_cache())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -26,7 +26,7 @@ class Future:
     __slots__ = [
         'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
-        'parent_pipeline_future', 'invocation_id', 'batch_idx',
+        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily',
     ]
 
     def __init__(
@@ -47,6 +47,7 @@ class Future:
         is_pipeline=False,
         invocation_id=-1,
         batch_idx=None,
+        cache_temporarily=False,
     ):
         self.fn = fn
         if fn and hasattr(fn, '__name__'):
@@ -74,6 +75,7 @@ class Future:
         self.parent_pipeline_future = None
         self.invocation_id = invocation_id
         self.batch_idx = batch_idx
+        self.cache_temporarily = cache_temporarily
 
     @property
     def code_args_hash(self):
@@ -138,6 +140,12 @@ class Future:
 
             return self.serializer.loads(val)
 
+    def clear_cache(self):
+        if self.cache is None:
+            return
+
+        self.cache.clear(self.hash)
+
     def map_transfer_outs(self, out):
         if self.cache is None:
             return out
@@ -197,6 +205,10 @@ class Future:
             if self.cache is not None and not is_cached:
                 specific_out_bytes = self.serializer.dumps(specific_out)
                 self.cache.add(self.hash, specific_out_bytes)
+
+                for parent_future in self.parent_futures():
+                    if parent_future.cache_temporarily:
+                        parent_future.clear_cache()
 
             for path in self.output_files:
                 # Check if output file is up to date

@@ -120,6 +120,13 @@ class SqliteCache:
         cls.connection.commit()
 
     @classmethod
+    def clear(cls, hash):
+        # TODO: delete files as well when we store large contents in files
+        cls.connect()
+        cls.cursor.execute("DELETE FROM cache WHERE hash=?", (hash,))
+        cls.connection.commit()
+
+    @classmethod
     def add_file(cls, path, modified=None, merkl_hash=None, md5_hash=None):
         modified = modified or get_modified_time(path)
         cls.connect()

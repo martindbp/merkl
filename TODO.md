@@ -1,3 +1,11 @@
+When a task is chained multiple times, e.g.
+```
+a = my_task(0)
+b = my_task(a)
+c = my_task(b)
+```
+allow to set a "clear_same_task_parent_cache" option on my_task.
+
 Add verbose command and logging
 
 Allow files to be seperately tracked if a function returns a single DirOut, use out keys as filenames

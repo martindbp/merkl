@@ -230,7 +230,15 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
 
 
 @doublewrap
-def task(f, outs=None, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, serializer=None, sig=None):
+def task(
+    f,
+    outs=None,
+    hash_mode=HashMode.FIND_DEPS,
+    deps=None,
+    cache=SqliteCache,
+    serializer=None,
+    sig=None,
+):
     deps = deps or []
     sig = sig if sig else signature(f)
 
