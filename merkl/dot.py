@@ -103,12 +103,13 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
         print_dot_graph_nodes(node_future.parent_futures(), code_args_hash, printed)
 
 
-def print_dot_graph(futures, rankdir=None):
+def print_dot_graph(futures, rankdir=None, transparent_bg=False):
     printed = set()
     print('digraph D {')
     if rankdir is not None:
         print(f'\trankdir="{rankdir}";')
-    print('\tbgcolor="transparent";')
+    if transparent_bg:
+        print('\tbgcolor="transparent";')
     print('\tnode [shape=plaintext, fillcolor="white", style=filled];')
     print_dot_graph_nodes(futures, printed=printed)
     print('}')

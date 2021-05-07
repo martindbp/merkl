@@ -51,6 +51,7 @@ def main():
         'dot', description='Output the DAG of a task or pipeline as a dot file')
     dot_parser.set_defaults(command='dot', subcommand='dot')
     dot_parser.add_argument('--rankdir', choices=['TB', 'LR'], help='Value for the rankdir dot graph parameter')
+    dot_parser.add_argument('--transparent_bg', action='store_true', help='Option to output transparent background')
     dot_parser.add_argument('--no-cache', action='store_true', help='Disable caching')
     dot_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
 
