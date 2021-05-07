@@ -63,10 +63,10 @@ class Future:
         self._code_args_hash = None
 
         # Cache for the all outputs with the respect to a function and its args
-        self.outs_shared_cache = outs_shared_cache or {}
+        self.outs_shared_cache = outs_shared_cache if outs_shared_cache is not None else {}
         self.meta = meta
         self.is_input = is_input
-        self.output_files = output_files or []
+        self.output_files = output_files if output_files is not None else []
         if len(self.output_files) > 0 and self.serializer is None:
             raise SerializationError(f'No serializer set for future {self}')
 
