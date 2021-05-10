@@ -7,6 +7,8 @@ import merkl
 
 NO_CACHE = False
 
+BLOB_DB_SIZE_LIMIT_BYTES = 100000  # see link further down on page and blob sizes
+
 def get_merkl_path():
     from merkl.io import cwd
     return f'{cwd}.merkl/'
@@ -68,6 +70,11 @@ class SqliteCache:
         os.makedirs(get_merkl_path(), exist_ok=True)
         os.makedirs(get_cache_dir_path(), exist_ok=True)
         cls.connect()
+
+        # Increase page size for faster BLOB performance:
+        # https://www.sqlite.org/intern-v-extern-blob.html#:~:text=A%20database%20page%20size%20of,a%20separate%20file%20are%20faster.
+        cls.cursor.execute("PRAGMA page_size = 16384;")
+
         cls.cursor.execute("""
             CREATE TABLE cache (
                 hash CHARACTER(64) PRIMARY KEY,
@@ -117,25 +124,38 @@ class SqliteCache:
         ref_path = None if ref is None else str(ref)
         ref_is_dir = isinstance(ref, merkl.io.DirRef)
         cls.connect()
+
+        if ref is None and len(content_bytes) > BLOB_DB_SIZE_LIMIT_BYTES:
+            # Faster to store data in a file
+            cache_file_path = get_cache_file_path(hash, makedirs=True)
+            with open(cache_file_path, 'wb') as f:
+                f.write(content_bytes)
+            content_bytes = None
+
         cls.cursor.execute("INSERT INTO cache VALUES (?, ?, ?, ?)", (hash, content_bytes, ref_path, ref_is_dir))
+
         cls.connection.commit()
 
     @classmethod
     def clear(cls, hash):
         cls.connect()
-        result = cls.cursor.execute("SELECT ref_path, ref_is_dir FROM cache WHERE hash=?", (hash,))
-        ref_path, ref_is_dir = list(result)[0]
+        result = cls.cursor.execute("SELECT ref_path, ref_is_dir, data FROM cache WHERE hash=?", (hash,))
+        ref_path, ref_is_dir, data = list(result)[0]
         if ref_path is not None:
             if ref_is_dir:
                 shutil.rmtree(ref_path)
             else:
                 os.remove(ref_path)
 
+        if data is None:
+            # Data stored on file, remove it
+            os.remove(get_cache_file_path(hash))
+
         cls.cursor.execute("DELETE FROM cache WHERE hash=?", (hash,))
         cls.connection.commit()
 
     @classmethod
-    def add_file(cls, path, modified=None, merkl_hash=None, md5_hash=None):
+    def track_file(cls, path, modified=None, merkl_hash=None, md5_hash=None):
         modified = modified or get_modified_time(path)
         cls.connect()
         cls.cursor.execute("INSERT INTO files VALUES (?, ?, ?, ?)", (path, modified, merkl_hash, md5_hash))

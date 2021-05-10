@@ -1,9 +1,5 @@
 Make some kind of BaseCache that can be inherited from
 
-Store large contents as files instead of in sqlite
-
-When adding FileRef/DirRef, need to make a record in the cache that there's a file
-
 Add verbose command and logging
 
 Allow files to be seperately tracked if a function returns a single DirOut, use out keys as filenames

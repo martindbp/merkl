@@ -59,7 +59,7 @@ def fetch_or_compute_md5(path, cache=merkl.cache.SqliteCache, store=True):
     if md5_hash is None:
         md5_hash = get_hash_memory_optimized(path, mode='md5')
         if store:
-            cache.add_file(path, modified, md5_hash=md5_hash)
+            cache.track_file(path, modified, md5_hash=md5_hash)
 
     return md5_hash
 
@@ -75,7 +75,7 @@ def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCa
 
     # NOTE: we could get the md5 hash and store it, but not strictly necessary for
     # files that merkl has "created". The md5 is necessary though for files _read_ by merkl but produced elsewhere
-    cache.add_file(path, merkl_hash=merkl_hash)
+    cache.track_file(path, merkl_hash=merkl_hash)
 
 
 class FileRef(str):

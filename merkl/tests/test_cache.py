@@ -1,11 +1,12 @@
 import os
+import math
 import unittest
 from pathlib import Path
 from merkl import *
 from merkl.exceptions import *
 from merkl.tests import TestCaseWithMerklRepo
 from merkl.io import FileRef, DirRef
-from merkl.cache import get_cache_file_path, SqliteCache
+from merkl.cache import get_cache_file_path, SqliteCache, BLOB_DB_SIZE_LIMIT_BYTES
 
 
 class TestCache(TestCaseWithMerklRepo):
@@ -185,6 +186,22 @@ class TestCache(TestCaseWithMerklRepo):
         self.assertFalse(a.in_cache())
         self.assertTrue(b.in_cache())
 
+    def test_cache_larger_blobs(self):
+        # First test that small blob doesn't get stored in file
+        hash = 'gfafasf323'
+        SqliteCache.add(hash, b'small blob')
+        self.assertFalse(os.path.exists(get_cache_file_path(hash)))
+
+        # Then check that large blog is stored in file
+        hash = 'gy25uhg2hwy34'
+        big_blob = b'big blob!!'
+        big_blob = big_blob * (math.ceil(BLOB_DB_SIZE_LIMIT_BYTES / len(big_blob)) + 1)  # make it large
+        SqliteCache.add(hash, big_blob)
+        self.assertTrue(os.path.exists(get_cache_file_path(hash)))
+
+        # Check that file is removed when cache is cleared
+        SqliteCache.clear(hash)
+        self.assertFalse(os.path.exists(get_cache_file_path(hash)))
 
 if __name__ == '__main__':
     unittest.main()
