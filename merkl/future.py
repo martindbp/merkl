@@ -166,8 +166,11 @@ class Future:
         if not is_cached:
             if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
                 raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
-            elif isinstance(outputs, dict) and len(outputs) != len(self.outs):
-                raise TaskOutsError('Wrong number of outputs: {len(outputs)}. Expected {len(self.outs)}')
+            elif isinstance(outputs, dict) and self.outs != 1:
+                if isinstance(self.outs, int):
+                    raise TaskOutsError(f'Outs was int: {self.outs}, but not 1, but output is dict')
+                elif len(outputs) != len(self.outs):
+                    raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
 
             if self.batch_idx is not None:
                 outputs = outputs[self.batch_idx]
