@@ -97,7 +97,14 @@ class TestCache(TestCaseWithMerklRepo):
         files = my_task(['arg1', 'arg2', 'arg3'])
         for file_a, file_b in files:
             self.assertNotEqual(file_a.hash, file_b.hash)
-            self.assertNotEqual(file_a.eval(), file_b.eval())
+            file_a_out = file_a.eval()
+            file_b_out = file_b.eval()
+            self.assertNotEqual(file_a_out, file_b_out)
+
+            # Make sure the files get deleted after clearing cache
+            self.assertTrue(os.path.exists(file_a_out))
+            file_a.clear_cache()
+            self.assertFalse(os.path.exists(file_a_out))
 
     def test_dir_outs(self):
         filenames = []

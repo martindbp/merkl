@@ -146,19 +146,9 @@ class Future:
 
         self.cache.clear(self.hash)
 
-    def map_transfer_outs(self, out):
-        if self.cache is None:
-            return out
-
-        if isinstance(out, FileRef):
-            return self.cache.transfer_file_out(out, self.hash)
-        elif isinstance(out, DirRef):
-            return self.cache.transfer_dir_out(out, self.hash)
-
-        return out
-
     def eval(self):
         specific_out = None
+        specific_out_is_ref = False
         outputs = None
         is_cached = self.in_cache()
         if is_cached:
@@ -193,7 +183,10 @@ class Future:
             if len(deep_file_dir_outs) > 0:
                 raise ValueError('FileRef and DirRef cannot be deeply nested in a task out')
 
-            specific_out = self.map_transfer_outs(specific_out)
+            if self.cache is not None:
+                if isinstance(specific_out, FileRef) or isinstance(specific_out, DirRef):
+                    specific_out = self.cache.transfer_ref(specific_out, self.hash)
+                    specific_out_is_ref = True
 
         if self.is_pipeline:
             # Set the pipeline function on all output futures
@@ -204,7 +197,7 @@ class Future:
             specific_out_bytes = None
             if self.cache is not None and not is_cached:
                 specific_out_bytes = self.serializer.dumps(specific_out)
-                self.cache.add(self.hash, specific_out_bytes)
+                self.cache.add(self.hash, specific_out_bytes, ref=(specific_out if specific_out_is_ref else None))
 
                 for parent_future in self.parent_futures():
                     if parent_future.cache_temporarily:
@@ -223,7 +216,7 @@ class Future:
                     if specific_out_bytes is None:
                         specific_out_bytes = self.serializer.dumps(specific_out)
 
-                    write_track_file(path, specific_out_bytes, self.hash)
+                    write_track_file(path, specific_out_bytes, self.hash, self.cache)
 
         return specific_out
 

@@ -1,10 +1,8 @@
-When a task is chained multiple times, e.g.
-```
-a = my_task(0)
-b = my_task(a)
-c = my_task(b)
-```
-allow to set a "clear_same_task_parent_cache" option on my_task.
+Make some kind of BaseCache that can be inherited from
+
+Store large contents as files instead of in sqlite
+
+When adding FileRef/DirRef, need to make a record in the cache that there's a file
 
 Add verbose command and logging
 

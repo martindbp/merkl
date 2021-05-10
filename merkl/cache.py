@@ -3,6 +3,8 @@ import shutil
 import sqlite3
 from typing import NamedTuple
 
+import merkl
+
 NO_CACHE = False
 
 def get_merkl_path():
@@ -69,7 +71,9 @@ class SqliteCache:
         cls.cursor.execute("""
             CREATE TABLE cache (
                 hash CHARACTER(64) PRIMARY KEY,
-                data BLOB
+                data BLOB,
+                ref_path TEXT,
+                ref_is_dir BOOL
             )
         """)
 
@@ -84,45 +88,49 @@ class SqliteCache:
         """)
 
     @classmethod
-    def transfer_file_out(cls, file_out, hash):
-        """ Transfers a FileRef from the original place in the file system to the merkl cache, and returns
-        the new FileRef with the new path """
-        from merkl.io import FileRef
-        splits = file_out.split('.')
-        ext = None if len(splits) == 1 else splits[-1]
-        cache_file_path = get_cache_file_path(hash, ext, makedirs=True)
-        if os.path.exists(cache_file_path):
-            os.remove(cache_file_path)
+    def transfer_ref(cls, ref, hash):
+        """ Transfers a FileRef/DirRef from the original place in the file system to the merkl cache, and returns
+        the new ref with the new path """
+        if isinstance(ref, merkl.io.FileRef):
+            splits = ref.split('.')
+            ext = None if len(splits) == 1 else splits[-1]
+            cache_file_path = get_cache_file_path(hash, ext, makedirs=True)
+            if os.path.exists(cache_file_path):
+                os.remove(cache_file_path)
 
-        os.link(file_out, cache_file_path)
-        new_file_out = FileRef(cache_file_path)
-        if file_out.rm_after_caching:
-            os.remove(file_out)
-        return new_file_out
+            os.link(ref, cache_file_path)
+            new_file_out = merkl.io.FileRef(cache_file_path)
+            if ref.rm_after_caching:
+                os.remove(ref)
+            return new_file_out
+        elif isinstance(ref, merkl.io.DirRef):
+            cache_dir_path = get_cache_out_dir_path(hash, makedirs=True)
+            shutil.copytree(ref, cache_dir_path)
+            if ref.rm_after_caching:
+                shutil.rmtree(ref)
 
-    @classmethod
-    def transfer_dir_out(cls, dir_out, hash):
-        """ Transfers a DirRef from the original place in the file system to the merkl cache, and returns
-        the new DirRef with the new path """
-        from merkl.io import DirRef
-        cache_dir_path = get_cache_out_dir_path(hash, makedirs=True)
-        shutil.copytree(dir_out, cache_dir_path)
-        if dir_out.rm_after_caching:
-            shutil.rmtree(dir_out)
-
-        dir_out = DirRef(cache_dir_path, files=dir_out._files)
-        return dir_out
+            ref = merkl.io.DirRef(cache_dir_path, files=ref._files)
+            return ref
 
     @classmethod
-    def add(cls, hash, content_bytes=None):
+    def add(cls, hash, content_bytes=None, ref=None):
+        ref_path = None if ref is None else str(ref)
+        ref_is_dir = isinstance(ref, merkl.io.DirRef)
         cls.connect()
-        cls.cursor.execute("INSERT INTO cache VALUES (?, ?)", (hash, content_bytes))
+        cls.cursor.execute("INSERT INTO cache VALUES (?, ?, ?, ?)", (hash, content_bytes, ref_path, ref_is_dir))
         cls.connection.commit()
 
     @classmethod
     def clear(cls, hash):
-        # TODO: delete files as well when we store large contents in files
         cls.connect()
+        result = cls.cursor.execute("SELECT ref_path, ref_is_dir FROM cache WHERE hash=?", (hash,))
+        ref_path, ref_is_dir = list(result)[0]
+        if ref_path is not None:
+            if ref_is_dir:
+                shutil.rmtree(ref_path)
+            else:
+                os.remove(ref_path)
+
         cls.cursor.execute("DELETE FROM cache WHERE hash=?", (hash,))
         cls.connection.commit()
 

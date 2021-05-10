@@ -6,8 +6,9 @@ from pathlib import Path
 from functools import partial
 from datetime import datetime
 from tempfile import mkdtemp
+
+import merkl
 from merkl.utils import get_hash_memory_optimized
-from merkl.cache import SqliteCache
 from merkl.exceptions import SerializationError
 
 
@@ -35,18 +36,16 @@ def path_future(path):
     def _return_path():
         return path
 
-    from merkl.future import Future
-    return Future(_return_path, hash=md5_hash, meta=path, is_input=True)
+    return merkl.future.Future(_return_path, hash=md5_hash, meta=path, is_input=True)
 
 
 def read_future(path, flags=''):
     if not os.path.exists(path):
         raise FileNotFoundError(path)
 
-    from merkl.future import Future
     md5_hash = fetch_or_compute_md5(path, store=True)
     f = partial(_get_file_content, path=path, flags=flags)
-    return Future(f, hash=md5_hash, meta=path, is_input=True)
+    return merkl.future.Future(f, hash=md5_hash, meta=path, is_input=True)
 
 
 def write_future(future, path):
@@ -54,18 +53,18 @@ def write_future(future, path):
     return future
 
 
-def fetch_or_compute_md5(path, store=True):
+def fetch_or_compute_md5(path, cache=merkl.cache.SqliteCache, store=True):
     modified = os.stat(path).st_mtime
-    md5_hash, _ = SqliteCache.get_file_mod_hash(path, modified)
+    md5_hash, _ = cache.get_file_mod_hash(path, modified)
     if md5_hash is None:
         md5_hash = get_hash_memory_optimized(path, mode='md5')
         if store:
-            SqliteCache.add_file(path, modified, md5_hash=md5_hash)
+            cache.add_file(path, modified, md5_hash=md5_hash)
 
     return md5_hash
 
 
-def write_track_file(path, content_bytes, merkl_hash):
+def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCache):
     if isinstance(content_bytes, FileRef):
         shutil.copy(content_bytes, path)
     elif isinstance(content_bytes, DirRef):
@@ -76,7 +75,7 @@ def write_track_file(path, content_bytes, merkl_hash):
 
     # NOTE: we could get the md5 hash and store it, but not strictly necessary for
     # files that merkl has "created". The md5 is necessary though for files _read_ by merkl but produced elsewhere
-    SqliteCache.add_file(path, merkl_hash=merkl_hash)
+    cache.add_file(path, merkl_hash=merkl_hash)
 
 
 class FileRef(str):
@@ -95,6 +94,9 @@ class FileRef(str):
 
     def __repr__(self):
         return f'<FileRef {self}>'
+
+    def remove(self):
+        os.remove(self)
 
 
 class DirRef(str):
@@ -133,3 +135,6 @@ class DirRef(str):
 
     def __repr__(self):
         return f'<DirRef {self}>'
+
+    def remove(self):
+        shutil.rmtree(self)
