@@ -306,7 +306,7 @@ class TestTask(TestCaseWithMerklRepo):
             def fun4(args, other_arg):
                 pass
 
-        _embed_bert = embed_bert.__wrapped__
+        _embed_bert = embed_bert.orig_fn
 
         called = 0
         num_inputs = None

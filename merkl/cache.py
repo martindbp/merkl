@@ -123,7 +123,6 @@ class SqliteCache:
     def add(cls, hash, content_bytes=None, ref=None):
         ref_path = None if ref is None else str(ref)
         ref_is_dir = isinstance(ref, merkl.io.DirRef)
-        cls.connect()
 
         if ref is None and len(content_bytes) > BLOB_DB_SIZE_LIMIT_BYTES:
             # Faster to store data in a file
@@ -132,15 +131,18 @@ class SqliteCache:
                 f.write(content_bytes)
             content_bytes = None
 
+        cls.connect()
         cls.cursor.execute("INSERT INTO cache VALUES (?, ?, ?, ?)", (hash, content_bytes, ref_path, ref_is_dir))
-
         cls.connection.commit()
 
     @classmethod
     def clear(cls, hash):
         cls.connect()
-        result = cls.cursor.execute("SELECT ref_path, ref_is_dir, data FROM cache WHERE hash=?", (hash,))
-        ref_path, ref_is_dir, data = list(result)[0]
+        result = list(cls.cursor.execute("SELECT ref_path, ref_is_dir, data FROM cache WHERE hash=?", (hash,)))
+        if len(result) == 0:
+            return
+
+        ref_path, ref_is_dir, data = result[0]
         if ref_path is not None:
             if ref_is_dir:
                 shutil.rmtree(ref_path)

@@ -5,8 +5,8 @@ import dill
 from pathlib import Path
 from enum import Enum
 from functools import lru_cache
-from sigtools.specifiers import forwards_to_function
-from inspect import signature, getsource, isfunction, ismodule, getmodule
+from inspect import getsource, isfunction, ismodule, getmodule
+from sigtools.specifiers import forwards_to_function, signature
 import merkl
 from merkl.utils import (
     doublewrap,
@@ -109,7 +109,7 @@ def validate_resolve_deps(deps):
 
         if isfunction(dep):
             if hasattr(dep, 'is_merkl') and dep.type == 'task':
-                dep = dep.__wrapped__
+                dep = dep.orig_fn
             try:
                 dep = f'<Function {dep.__name__}: {code_hash(dep)}>'
             except OSError:  # source code not available
@@ -137,6 +137,7 @@ def validate_resolve_deps(deps):
             resolved_deps.append(dep)
 
     return resolved_deps + extra_deps
+
 
 @doublewrap
 def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCache, serializer=None):
@@ -225,7 +226,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
     wrap.is_merkl = True
     wrap.type = 'batch'
     wrap.outs = 1
-    wrap.__wrapped__ = batch_fn
+    wrap.orig_fn = batch_fn
     return wrap
 
 
@@ -309,7 +310,7 @@ def task(
     wrap.type = 'task'
     wrap.outs = outs
     wrap.deps = deps
-    wrap.__wrapped__ = f
+    wrap.orig_fn = f
     return wrap
 
 
@@ -355,5 +356,5 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
     wrap.type = 'pipeline'
     wrap.outs = 1
     wrap.deps = deps
-    wrap.__wrapped__ = f
+    wrap.orig_fn = f
     return wrap
