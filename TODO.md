@@ -1,3 +1,5 @@
+Add command for clearing cache
+
 Make some kind of BaseCache that can be inherited from
 
 Add verbose command and logging

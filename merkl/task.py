@@ -16,8 +16,8 @@ from merkl.utils import (
     find_function_deps,
     FunctionDep,
     get_hash_memory_optimized,
-    log
 )
+from merkl.logger import logger
 from merkl.future import Future
 from merkl.exceptions import *
 from merkl.cache import SqliteCache
@@ -113,13 +113,13 @@ def validate_resolve_deps(deps):
             try:
                 dep = f'<Function {dep.__name__}: {code_hash(dep)}>'
             except OSError:  # source code not available
-                log(f'No source code found for dep: {dep}')
+                logger.debug(f'No source code found for dep: {dep}')
                 continue
         elif ismodule(dep):
             try:
                 dep = f'<Module {dep.__name__}: {code_hash(dep, is_module=True)}>'
             except OSError:  # source code not available
-                log(f'No source code found for dep: {dep}')
+                logger.debug(f'No source code found for dep: {dep}')
                 continue
         elif isinstance(dep, bytes):
             dep = dep.decode('utf-8')
@@ -167,8 +167,10 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
 
         outs = []
         outs_shared_cache = {}
+        futures = []
         non_cached_outs_args = []
         invocation_id = next_invocation_id
+
         for i, args_tuple in enumerate(args):
             orig_args_tuple = args_tuple
             # Validate that args is a list of tuples, or single_fn has single input
@@ -182,43 +184,48 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
             out = single_fn(*args_tuple)
 
             is_cached = False
-            for specific_out in nested_collect(out, lambda x: isinstance(x, Future)):
+            for future in nested_collect(out, lambda x: isinstance(x, Future)):
                 # Set the invocation id to the same for all futures
-                specific_out.invocation_id = invocation_id
+                future.invocation_id = invocation_id
                 # Trigger calculation of the hash, which will be cached
-                specific_out.hash
+                future.hash
                 # Swap out the function for the batch version
-                specific_out.fn = batch_fn
+                future.fn = batch_fn
                 # Swap out code_args_hash to the batch_fn code hash, so
                 # that the the value can be taken out of the shared cache
                 # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to
                 # Store the output temporarily
-                specific_out._code_args_hash = batch_fn_code_hash
+                future._code_args_hash = batch_fn_code_hash
 
                 # Override cache and serializer
                 if cache:
-                    specific_out.cache = cache if not merkl.cache.NO_CACHE else None
+                    future.cache = cache if not merkl.cache.NO_CACHE else None
                 if serializer:
-                    specific_out.serializer = resolve_serializer(serializer, specific_out.out_name)
+                    future.serializer = resolve_serializer(serializer, future.out_name)
 
-                is_cached = is_cached or specific_out.in_cache()
+                is_cached = is_cached or future.in_cache()
                 if not is_cached:
                     # Need to set the shared cache to be shared across all batch invocations
                     # NOTE: important only share this cache for outs that are not already in cache
-                    specific_out.outs_shared_cache = outs_shared_cache
+                    future.outs_shared_cache = outs_shared_cache
+                    futures.append(future)
 
             outs.append(out)
 
             if not is_cached:
                 non_cached_outs_args.append((out, orig_args_tuple))
 
+        futures_set = set(futures)
+        for future in futures:
+            future.sibling_futures = futures_set - {future}
+
         # Swap out the args to the final list of batch args with non-cached results
         batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args])
         for i, (out, _) in enumerate(non_cached_outs_args):
-            for specific_out in nested_collect(out, lambda x: isinstance(x, Future)):
-                specific_out.bound_args = batch_bound_args
+            for future in nested_collect(out, lambda x: isinstance(x, Future)):
+                future.bound_args = batch_bound_args
                 # Store the batch index from where the out should pick its results
-                specific_out.batch_idx = i
+                future.batch_idx = i
 
         next_invocation_id = invocation_id + 1
         return outs
@@ -283,10 +290,11 @@ def task(
         outputs = {}
         outs_shared_cache = {}
         is_single = resolved_outs == 1 and resolved_return_type not in ['Tuple', 'Dict']
+        futures = []
         for out_name in enumerated_outs:
             out_serializer = resolve_serializer(serializer, out_name)
 
-            output = Future(
+            future = Future(
                 f,
                 fn_code_hash,
                 resolved_outs,
@@ -298,7 +306,12 @@ def task(
                 outs_shared_cache,
                 invocation_id=next_invocation_id,
             )
-            outputs[out_name] = output
+            outputs[out_name] = future
+            futures.append(future)
+
+        futures_set = set(futures)
+        for future in futures:
+            future.sibling_futures = futures_set - {future}
 
         next_invocation_id += 1
 

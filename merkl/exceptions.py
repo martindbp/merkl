@@ -1,14 +1,18 @@
-class FutureAccessError(BaseException):
+class FutureAccessError(Exception):
     pass
 
 
-class SerializationError(BaseException):
+class SerializationError(Exception):
     pass
 
 
-class BatchTaskError(BaseException):
+class BatchTaskError(Exception):
     pass
 
 
-class TaskOutsError(BaseException):
+class TaskOutsError(Exception):
+    pass
+
+
+class EvalError(Exception):
     pass

@@ -20,7 +20,8 @@ def _get_file_content(path, flags):
         return f.read()
 
 
-def _get_tmp_filename(suffix='', dir='/tmp/'):
+def _get_tmp_filename(suffix='', dir=None):
+    dir = dir if dir is not None else merkl.cache.get_tmp_dir()
     path = None
     while path is None or os.path.exists(path):
         path = str(Path(dir) / f'{uuid.uuid4().hex}{suffix}')
@@ -102,7 +103,7 @@ class FileRef(str):
 class DirRef(str):
     def __new__(cls, path=None, rm_after_caching=False, files=None):
         if path is None:
-            path = mkdtemp()
+            path = mkdtemp(dir=merkl.cache.get_tmp_dir())
             os.makedirs(path, exist_ok=True)
 
         return str.__new__(cls, path)

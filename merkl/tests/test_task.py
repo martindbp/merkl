@@ -265,9 +265,8 @@ class TestTask(TestCaseWithMerklRepo):
     def test_future_operator_access(self):
         # Test that Future cannot be accessed by checking some operators
         future = embed_bert('sentence')
-        with self.assertRaises(FutureAccessError):
-            # Can't be added to set
-            set([future])
+
+        set([future])  # this one is fine
 
         with self.assertRaises(FutureAccessError):
             # Can't be used as a truth value in statements

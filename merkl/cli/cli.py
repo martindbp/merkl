@@ -1,11 +1,13 @@
 import os
 import sys
+import logging
 import argparse
 from pathlib import Path
 
 from merkl.cli.init import InitAPI
 from merkl.cli.run import RunAPI
 from merkl.cli.dot import DotAPI
+from merkl.logger import logger
 
 
 class MerkLAPI:
@@ -63,6 +65,8 @@ def main():
     kwargs.pop('subcommand')
     quiet = kwargs.pop('quiet')
     verbose = kwargs.pop('verbose')
+    if verbose:
+        logger.setLevel(logging.DEBUG)
 
     if args.command == 'help':
         print('Use the --help option for help')

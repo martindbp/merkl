@@ -6,6 +6,7 @@ from merkl.io import write_track_file, write_future, FileRef, DirRef
 from merkl.utils import OPERATORS, nested_map, nested_collect
 from merkl.cache import get_modified_time
 from merkl.exceptions import *
+from merkl.logger import logger
 
 
 def map_to_hash(val):
@@ -26,7 +27,7 @@ class Future:
     __slots__ = [
         'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
-        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily',
+        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'sibling_futures',
     ]
 
     def __init__(
@@ -76,6 +77,7 @@ class Future:
         self.invocation_id = invocation_id
         self.batch_idx = batch_idx
         self.cache_temporarily = cache_temporarily
+        self.sibling_futures = set()
 
     @property
     def code_args_hash(self):
@@ -130,15 +132,15 @@ class Future:
 
     def get_cache(self):
         if self.cache is None:
-            return None
+            return None, None
 
         if self.cache.has(self.hash):
             val = self.cache.get(self.hash)
             if self.is_input:
                 # reading from source file, not serialized
-                return val
+                return val, val
 
-            return self.serializer.loads(val)
+            return self.serializer.loads(val), val
 
     def clear_cache(self):
         if self.cache is None:
@@ -146,59 +148,84 @@ class Future:
 
         self.cache.clear(self.hash)
 
+    def write_output_files(self, specific_out, specific_out_bytes):
+        for path in self.output_files:
+            # Check if output file is up to date
+            modified = get_modified_time(path)
+            up_to_date = False
+            if self.cache is not None:
+                md5_hash, merkl_hash, modified_time = self.cache.get_latest_file(path)
+                up_to_date = modified_time == modified and merkl_hash == self.hash
+
+            # If not up to date, serialize and write the new file
+            if not up_to_date:
+                if specific_out_bytes is None:
+                    specific_out_bytes = self.serializer.dumps(specific_out)
+
+                write_track_file(path, specific_out_bytes, self.hash, self.cache)
+
     def eval(self):
+        if self.in_cache():
+            specific_out, specific_out_bytes = self.get_cache()
+            self.write_output_files(specific_out, specific_out_bytes)
+        else:
+            specific_out, specific_out_bytes = self._eval()
+
+        return specific_out
+
+    def _eval(self):
         specific_out = None
         specific_out_is_ref = False
         outputs = None
-        is_cached = self.in_cache()
-        if is_cached:
-            specific_out = self.get_cache()
-        elif self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
+        if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
             outputs = self.outs_shared_cache.get(self.code_args_hash)
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
+            logger.debug(f'Calling {self.fn}')
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
 
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
 
-        if not is_cached:
-            if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
+                for future in self.sibling_futures:
+                    future._eval()
+
+        if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
+            raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
+        elif isinstance(outputs, dict) and self.outs != 1:
+            if isinstance(self.outs, int):
+                raise TaskOutsError(f'Outs was int: {self.outs}, but not 1, but output is dict')
+            elif len(outputs) != len(self.outs):
                 raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
-            elif isinstance(outputs, dict) and self.outs != 1:
-                if isinstance(self.outs, int):
-                    raise TaskOutsError(f'Outs was int: {self.outs}, but not 1, but output is dict')
-                elif len(outputs) != len(self.outs):
-                    raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')
 
-            if self.batch_idx is not None:
-                outputs = outputs[self.batch_idx]
-            if self.out_name is not None:
-                outputs = outputs[self.out_name]
+        if self.batch_idx is not None:
+            outputs = outputs[self.batch_idx]
+        if self.out_name is not None:
+            outputs = outputs[self.out_name]
 
-            specific_out = outputs
-            deep_file_dir_outs = nested_collect(
-                specific_out,
-                lambda out, lvl: (isinstance(out, FileRef) or isinstance(out, DirRef)) and lvl >= 1,
-                include_level=True,
-            )
-            if len(deep_file_dir_outs) > 0:
-                raise ValueError('FileRef and DirRef cannot be deeply nested in a task out')
+        specific_out = outputs
+        deep_refs = nested_collect(
+            specific_out,
+            lambda out, lvl: (isinstance(out, FileRef) or isinstance(out, DirRef)) and lvl >= 1,
+            include_level=True,
+        )
+        if len(deep_refs) > 0:
+            raise ValueError('FileRef and DirRef cannot be deeply nested in a task out')
 
-            if self.cache is not None:
-                if isinstance(specific_out, FileRef) or isinstance(specific_out, DirRef):
-                    specific_out = self.cache.transfer_ref(specific_out, self.hash)
-                    specific_out_is_ref = True
+        if self.cache is not None:
+            if isinstance(specific_out, FileRef) or isinstance(specific_out, DirRef):
+                specific_out = self.cache.transfer_ref(specific_out, self.hash)
+                specific_out_is_ref = True
 
         if self.is_pipeline:
             # Set the pipeline function on all output futures
             for future in nested_collect(outputs, lambda x: isinstance(x, Future)):
                 future.parent_pipeline_future = self
 
+        specific_out_bytes = None
         if not self.is_input:  # Futures from io should not be cached (but is read from cache)
-            specific_out_bytes = None
-            if self.cache is not None and not is_cached:
+            if self.cache is not None:
                 specific_out_bytes = self.serializer.dumps(specific_out)
                 self.cache.add(self.hash, specific_out_bytes, ref=(specific_out if specific_out_is_ref else None))
 
@@ -206,22 +233,9 @@ class Future:
                     if parent_future.cache_temporarily:
                         parent_future.clear_cache()
 
-            for path in self.output_files:
-                # Check if output file is up to date
-                modified = get_modified_time(path)
-                up_to_date = False
-                if self.cache is not None:
-                    md5_hash, merkl_hash, modified_time = self.cache.get_latest_file(path)
-                    up_to_date = modified_time == modified and merkl_hash == self.hash
+            self.write_output_files(specific_out, specific_out_bytes)
 
-                # If not up to date, serialize and write the new file
-                if not up_to_date:
-                    if specific_out_bytes is None:
-                        specific_out_bytes = self.serializer.dumps(specific_out)
-
-                    write_track_file(path, specific_out_bytes, self.hash, self.cache)
-
-        return specific_out
+        return specific_out, specific_out_bytes
 
     def __repr__(self):
         return f'<Future: {self.hash[:8]}>'
@@ -249,9 +263,6 @@ class Future:
         for key in FUTURE_STATE_EXCLUDED:
             setattr(self, key, None)
 
-    def deny_access(self, *args, **kwargs):
-        raise FutureAccessError
-
     def __or__(self, other):
         if not hasattr(other, 'is_merkl'):
             return NotImplemented
@@ -263,6 +274,16 @@ class Future:
             return NotImplemented
 
         return write_future(self, path)
+
+    def __hash__(self):
+        return int(self.hash, 16)
+
+    def __eq__(self, other):
+        return self.hash == other.hash
+
+    def deny_access(self, *args, **kwargs):
+        raise FutureAccessError
+
 
 
 # Override all the operators of Future to raise a specific exception when used

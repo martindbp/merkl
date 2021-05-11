@@ -4,25 +4,28 @@ import json
 import inspect
 import hashlib
 import textwrap
-from inspect import getmodule
-from inspect import isfunction, ismodule
+from functools import wraps
+from inspect import isfunction, ismodule, getmodule
 from typing import NamedTuple
 from stdlib_list import stdlib_list
 from sigtools.specifiers import forwards_to_function
 import merkl
-from merkl.exceptions import TaskOutsError
+from merkl import cache
+from merkl.exceptions import TaskOutsError, EvalError
+from merkl.logger import logger
+
 
 DEBUG = False
 
 BUILTIN_MODULES = stdlib_list()
 
 OPERATORS = [
-    '__bool__', '__not__', '__lt__', '__le__', '__eq__', '__ne__', '__ge__', 'truth', 'is_', 'is_not',
+    '__bool__', '__not__', '__lt__', '__le__', '__ne__', '__ge__', 'truth', 'is_', 'is_not',
     '__abs__', '__add__', '__and__', '__floordiv__', '__index__', '__invert__', '__lshift__', '__mod__', '__mul__',
     '__matmul__', '__neg__', '__pos__', '__pow__', '__rshift__', '__sub__', '__truediv__', '__xor__',
     '__concat__', '__contains__', 'countOf', '__delitem__', '__getitem__', 'indexOf', '__setitem__', 'length_hint',
     '__len__', '__iadd__', '__iand__', '__iconcat__', '__ifloordiv__', '__ilshift__', '__imod__', '__imul__',
-    '__imatmul__', '__ior__', '__irshift__', '__ipow__', '__isub__', '__itruediv__', '__ixor__', '__hash__',
+    '__imatmul__', '__ior__', '__irshift__', '__ipow__', '__isub__', '__itruediv__', '__ixor__',
 ]
 
 
@@ -179,6 +182,10 @@ def get_function_return_info(f):
     return set(return_types), set(num_returns)
 
 
-def log(s):
-    if DEBUG:
-        print(s)
+def evaluate_futures(outs, no_cache):
+    from merkl.future import Future, map_future_to_value
+
+    orig, cache.NO_CACHE = cache.NO_CACHE, no_cache
+    ret = nested_map(outs, map_future_to_value)
+    cache.NO_CACHE = orig
+    return ret

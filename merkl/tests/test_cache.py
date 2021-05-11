@@ -7,6 +7,7 @@ from merkl.exceptions import *
 from merkl.tests import TestCaseWithMerklRepo
 from merkl.io import FileRef, DirRef
 from merkl.cache import get_cache_file_path, SqliteCache, BLOB_DB_SIZE_LIMIT_BYTES
+from merkl.utils import evaluate_futures
 
 
 class TestCache(TestCaseWithMerklRepo):
@@ -66,13 +67,17 @@ class TestCache(TestCaseWithMerklRepo):
         # Check that temporary unnamed files work
         @task
         def my_task():
+            global filename
             file_out = FileRef(ext='txt')
+            filename = str(file_out)
             with open(file_out, 'w') as f:
                 f.write('test')
             return file_out
 
         path = my_task().eval()
         self.assertTrue(path.endswith('.txt'))
+        self.assertNotEqual(str(path), filename)
+        self.assertFalse(os.path.exists(filename))  # temporary file should have been deleted
 
         with open(path, 'r') as f:
             self.assertEqual(f.read(), 'test')
@@ -110,10 +115,13 @@ class TestCache(TestCaseWithMerklRepo):
     def test_dir_outs(self):
         filenames = []
 
+        dir_path = None
+
         @task
         def my_task():
-            nonlocal filenames
+            nonlocal filenames, dir_path
             dir_out = DirRef()
+            dir_path = str(dir_out)
 
             for i in range(5):
                 filename = dir_out.get_new_file(ext='txt')
@@ -129,6 +137,9 @@ class TestCache(TestCaseWithMerklRepo):
             self.assertNotEqual(filename, orig_filename)
             with open(filename, 'r') as f:
                 self.assertEqual(f.read(), f'test{i}')
+
+        self.assertNotEqual(str(dir_out), dir_path)
+        self.assertFalse(os.path.exists(dir_path))  # temporary dir should have been deleted
 
         # Test caching
         dir_out = my_task()
@@ -202,6 +213,34 @@ class TestCache(TestCaseWithMerklRepo):
         # Check that file is removed when cache is cleared
         SqliteCache.clear(hash)
         self.assertFalse(os.path.exists(get_cache_file_path(hash)))
+
+
+    def test_siblings_evaluated(self):
+        # There's an issue where if a function has multiple outs, and only some of them have been evaluated before the
+        # program crashes for some reason, then those outs that were not evaluated are never cached, even though the
+        # result is in the shared cache. Therefore, changed it so that all sibling futures get evaluated as well, so
+        # test that here
+        @task
+        def my_task():
+            return 1, 2, 3
+
+        @task
+        def my_second_task(val):
+            if val != 2:
+                return val
+            else:
+                raise KeyboardInterrupt
+
+        outs1 = my_task()
+        outs2 = [my_second_task(out) for out in outs1]
+        outs2[0].eval()
+        with self.assertRaises(KeyboardInterrupt):
+            outs2[1].eval()
+
+        # Eval-ing out22 failed, so outs1[2] was never reached, but all outs from first stage should be cached
+        for out in outs1:
+            self.assertTrue(out.in_cache())
+
 
 if __name__ == '__main__':
     unittest.main()

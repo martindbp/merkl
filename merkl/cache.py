@@ -4,14 +4,20 @@ import sqlite3
 from typing import NamedTuple
 
 import merkl
+from merkl.logger import logger
 
 NO_CACHE = False
 
 BLOB_DB_SIZE_LIMIT_BYTES = 100000  # see link further down on page and blob sizes
 
+
 def get_merkl_path():
     from merkl.io import cwd
     return f'{cwd}.merkl/'
+
+
+def get_tmp_dir():
+    return f'{get_merkl_path()}tmp/'
 
 
 def get_db_path():
@@ -67,7 +73,9 @@ class SqliteCache:
         if os.path.exists(get_db_path()):
             return
 
+        logger.debug(f'Creating cache')
         os.makedirs(get_merkl_path(), exist_ok=True)
+        os.makedirs(get_tmp_dir(), exist_ok=True)
         os.makedirs(get_cache_dir_path(), exist_ok=True)
         cls.connect()
 
@@ -98,6 +106,7 @@ class SqliteCache:
     def transfer_ref(cls, ref, hash):
         """ Transfers a FileRef/DirRef from the original place in the file system to the merkl cache, and returns
         the new ref with the new path """
+        logger.debug(f'Transferring {ref}')
         if isinstance(ref, merkl.io.FileRef):
             splits = ref.split('.')
             ext = None if len(splits) == 1 else splits[-1]
@@ -121,6 +130,7 @@ class SqliteCache:
 
     @classmethod
     def add(cls, hash, content_bytes=None, ref=None):
+        logger.debug(f'Caching {hash} ref={ref}, len(content_bytes)={len(content_bytes)}')
         ref_path = None if ref is None else str(ref)
         ref_is_dir = isinstance(ref, merkl.io.DirRef)
 
@@ -137,6 +147,7 @@ class SqliteCache:
 
     @classmethod
     def clear(cls, hash):
+        logger.debug(f'Clearing {hash}')
         cls.connect()
         result = list(cls.cursor.execute("SELECT ref_path, ref_is_dir, data FROM cache WHERE hash=?", (hash,)))
         if len(result) == 0:
@@ -158,6 +169,7 @@ class SqliteCache:
 
     @classmethod
     def track_file(cls, path, modified=None, merkl_hash=None, md5_hash=None):
+        logger.debug(f'Track file {path} modified={modified} merkl_hash={merkl_hash} md5_hash={md5_hash}')
         modified = modified or get_modified_time(path)
         cls.connect()
         cls.cursor.execute("INSERT INTO files VALUES (?, ?, ?, ?)", (path, modified, merkl_hash, md5_hash))
