@@ -217,7 +217,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
 
         futures_set = set(futures)
         for future in futures:
-            future.sibling_futures = futures_set - {future}
+            future.outs_shared_futures = futures_set
 
         # Swap out the args to the final list of batch args with non-cached results
         batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args])
@@ -311,7 +311,7 @@ def task(
 
         futures_set = set(futures)
         for future in futures:
-            future.sibling_futures = futures_set - {future}
+            future.outs_shared_futures = futures_set
 
         next_invocation_id += 1
 

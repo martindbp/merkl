@@ -21,13 +21,13 @@ def map_future_to_value(val):
     return val
 
 
-FUTURE_STATE_EXCLUDED = ['bound_args', 'fn']
+FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'outs_shared_futures']
 
 class Future:
     __slots__ = [
         'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
-        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'sibling_futures',
+        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
     ]
 
     def __init__(
@@ -36,7 +36,7 @@ class Future:
         fn_code_hash=None,
         outs=1,
         out_name=None,
-        deps=[],
+        deps=None,
         cache=None,
         serializer=None,
         bound_args=None,
@@ -77,7 +77,7 @@ class Future:
         self.invocation_id = invocation_id
         self.batch_idx = batch_idx
         self.cache_temporarily = cache_temporarily
-        self.sibling_futures = set()
+        self.outs_shared_futures = None
 
     @property
     def code_args_hash(self):
@@ -93,7 +93,7 @@ class Future:
             'kwargs': nested_map(self.bound_args.kwargs, map_to_hash, convert_tuples_to_lists=True),
             'function_name': self.fn.__name__,
             'function_code_hash': self.fn_code_hash,
-            'function_deps': self.deps,
+            'function_deps': self.deps or [],
         }
         m = hashlib.sha256()
         try:
@@ -188,7 +188,9 @@ class Future:
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
 
-                for future in self.sibling_futures:
+                for future in self.outs_shared_futures or set():
+                    if future.hash == self.hash:
+                        continue
                     future._eval()
 
         if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
