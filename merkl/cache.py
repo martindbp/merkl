@@ -5,6 +5,7 @@ from typing import NamedTuple
 
 import merkl
 from merkl.logger import logger
+from merkl.utils import collect_dag_futures, nested_collect
 
 NO_CACHE = False
 
@@ -51,6 +52,24 @@ def get_modified_time(path):
         return os.stat(path).st_mtime
     except:
         return None
+
+
+def clear(outs, keep=False, keep_outs=False):
+    futures = nested_collect(outs, lambda x: isinstance(x, merkl.future.Future))
+
+    dag_futures = set()
+    for future in futures:
+        collect_dag_futures(future, dag_futures, include_parent_pipelines=True)
+
+    if keep:
+        future_hashes = [future.hash for future in dag_futures]
+        SqliteCache.clear_all_except(future_hashes)
+    elif keep_outs:
+        outs_future_hashes = [future.hash for future in futures]
+        SqliteCache.clear_all_except(outs_future_hashes)
+    else:
+        for future in dag_futures:
+            future.clear_cache()
 
 
 class SqliteCache:
@@ -171,6 +190,23 @@ class SqliteCache:
         cls.connection.commit()
 
     @classmethod
+    def clear_all_except(cls, hashes):
+        quoted_hashes = [f'"{hash}"' for hash in hashes]
+        hashes_with_files = list(
+            cls.cursor.execute(f"SELECT hash, ref_path, ref_is_dir FROM cache WHERE hash NOT IN ({','.join(quoted_hashes)}) AND (data IS NULL OR ref_path IS NOT NULL)")
+        )
+        cls.cursor.execute(f"DELETE FROM cache WHERE hash NOT IN ({','.join(quoted_hashes)})", )
+
+        for hash, ref_path, ref_is_dir in hashes_with_files:
+            if ref_path is not None:
+                if ref_is_dir:
+                    shutil.rmtree(ref_path)
+                else:
+                    os.remove(ref_path)
+            else:
+                os.remove(get_cache_file_path(hash))
+
+    @classmethod
     def track_file(cls, path, modified=None, merkl_hash=None, md5_hash=None):
         logger.debug(f'Track file {path} modified={modified} merkl_hash={merkl_hash} md5_hash={md5_hash}')
         modified = modified or get_modified_time(path)
@@ -213,7 +249,8 @@ class SqliteCache:
 
         data = result[0][0]
         if data is None:
-            return open(get_cache_file_path(hash), 'rb').read()
+            with open(get_cache_file_path(hash), 'rb') as f:
+                return f.read()
 
         return data
 

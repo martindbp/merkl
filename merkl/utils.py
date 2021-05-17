@@ -189,3 +189,15 @@ def evaluate_futures(outs, no_cache):
     ret = nested_map(outs, map_future_to_value)
     cache.NO_CACHE = orig
     return ret
+
+
+def collect_dag_futures(future, out_futures, include_parent_pipelines=False):
+    if future in out_futures:
+        return
+
+    out_futures.add(future)
+    if future.parent_pipeline_future is not None:
+        out_futures.add(future.parent_pipeline_future)
+
+    for parent_future in future.parent_futures():
+        collect_dag_futures(parent_future, out_futures)

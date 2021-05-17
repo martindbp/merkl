@@ -1,3 +1,5 @@
+Serializers for args?
+
 Add command for clearing cache
 
 Make some kind of BaseCache that can be inherited from
@@ -28,25 +30,11 @@ Have pipeline be able to yield execution order
 Add capability to store result metadata in the cache
     Cache backend gets meta data as well, decides if and how to store it
 
-Add ability to serialize/deserialize straight to fileobject
-    Cache needs to have a get_fileobject and add_fileobject
-
 To return execution order, yield it in pipeline function while returning the final value, e.g. This way we could yield
 execution order multiple times, if we have .eval() calls
 
 Use execution order when calling `merkl run`. Provide `--target [N/<name>]` parameter, where N is number of cores if on
 local machine, and <name> could be AWS or something.
-
-Add a FileObjectWriteFuture (and rename FileObjectFuture -> FileObjectReadFuture?) which is returned when doing:
-    @task
-    def task1():
-        with merkl_open(flags='b') as f:
-            f.write(...)
-
-        return f
-
-Implement --pull option for run command, that doesn't run, just pulls the tracked files and cached futures
-    For tracked files, need to modify the timestamp to match the one in the .merkl file
 
 Have a cache backend that dedupes using content hash.
     Cache backend gets content, merkle hash and content hash and can decide itself how to store/recover an item
@@ -60,6 +48,3 @@ Have a cache backend that dedupes using content hash.
     Implement SQLite backend, good for small values and links
 
 Make sure functions are executed in the same order as the code
-
-Idea: A task can be eager or lazy. If eager, we execute right away and put in cache unless
-already in cache. We can also execute it in another process (hence future)

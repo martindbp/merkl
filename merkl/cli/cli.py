@@ -7,6 +7,7 @@ from pathlib import Path
 from merkl.cli.init import InitAPI
 from merkl.cli.run import RunAPI
 from merkl.cli.dot import DotAPI
+from merkl.cli.clear import ClearAPI
 from merkl.logger import logger
 
 
@@ -14,6 +15,7 @@ class MerkLAPI:
     init = InitAPI()
     run = RunAPI()
     dot = DotAPI()
+    clear = ClearAPI()
 
 
 def main():
@@ -48,7 +50,7 @@ def main():
     run_parser.add_argument('--no-cache', action='store_true', help='Disable caching')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
 
-    # ------------- DAG --------------
+    # ------------- DOT --------------
     dot_parser = subparsers.add_parser(
         'dot', description='Output the DAG of a task or pipeline as a dot file')
     dot_parser.set_defaults(command='dot', subcommand='dot')
@@ -56,6 +58,15 @@ def main():
     dot_parser.add_argument('--transparent_bg', action='store_true', help='Option to output transparent background')
     dot_parser.add_argument('--no-cache', action='store_true', help='Disable caching')
     dot_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
+
+    # ------------- CLEAR --------------
+    clear_parser = subparsers.add_parser(
+        'clear', description='Clears the cache optionially with respect to a pipeline or task')
+    clear_parser.set_defaults(command='clear', subcommand='clear')
+    clear_parser.add_argument('--keep', action='store_true', help='Keep reachable all values from <module_function>')
+    clear_parser.add_argument('--keep-outs', action='store_true', help='Keep only final <module_function> outputs')
+    clear_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
+
 
     args, unknown_args = parser.parse_known_args()
     kwargs = dict(args._get_kwargs())

@@ -241,6 +241,45 @@ class TestCache(TestCaseWithMerklRepo):
         for out in outs1:
             self.assertTrue(out.in_cache())
 
+    def test_clear_all_except(self):
+        @task
+        def my_task(val):
+            return 3, b'xxxxxxxxxx' * 20000  # something above the 100k limit for storing directly in DB
+
+        out1, out2 = my_task(2)
+        out1.eval()
+        # Some sanity checks
+        self.assertFalse(os.path.exists(get_cache_file_path(out1.hash)))
+        self.assertTrue(os.path.exists(get_cache_file_path(out2.hash)))
+        self.assertTrue(SqliteCache.has(out1.hash))
+        self.assertTrue(SqliteCache.has(out2.hash))
+
+        # Now let's say we evaluate my_task with some other input
+        out1_2, out2_2 = my_task(3)
+        out1_2.eval()
+        self.assertTrue(SqliteCache.has(out2_2.hash))
+
+        # Now clear all except this out
+        SqliteCache.clear_all_except([out1_2.hash])
+
+        # None of these should be cached or on file
+        self.assertFalse(SqliteCache.has(out2_2.hash))
+        self.assertFalse(SqliteCache.has(out1.hash))
+        self.assertFalse(SqliteCache.has(out2.hash))
+        self.assertFalse(os.path.exists(get_cache_file_path(out2.hash)))
+
+        # Make sure pipeline outs remain (there was a bug with this)
+        @pipeline
+        def my_pipeline():
+            return my_task(3)
+
+        out1, out2 = my_pipeline()
+        out1.eval()
+
+        cache.clear([out1], keep=True)
+        self.assertTrue(SqliteCache.has(out1.hash))
+        self.assertTrue(SqliteCache.has(out1.parent_pipeline_future.hash))
+
 
 if __name__ == '__main__':
     unittest.main()
