@@ -50,6 +50,8 @@ def read_future(path, flags=''):
 
 
 def write_future(future, path):
+    if future.output_files is None:
+        future.output_files = []
     future.output_files.append(path)
     return future
 

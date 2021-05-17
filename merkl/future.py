@@ -68,8 +68,8 @@ class Future:
         self.outs_shared_cache = outs_shared_cache if outs_shared_cache is not None else {}
         self.meta = meta
         self.is_input = is_input
-        self.output_files = output_files if output_files is not None else []
-        if len(self.output_files) > 0 and self.serializer is None:
+        self.output_files = output_files
+        if output_files is not None and len(output_files) > 0 and serializer is None:
             raise SerializationError(f'No serializer set for future {self}')
 
         self.is_pipeline = is_pipeline
@@ -149,7 +149,7 @@ class Future:
         self.cache.clear(self.hash)
 
     def write_output_files(self, specific_out, specific_out_bytes):
-        for path in self.output_files:
+        for path in self.output_files or []:
             # Check if output file is up to date
             modified = get_modified_time(path)
             up_to_date = False
