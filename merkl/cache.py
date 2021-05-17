@@ -114,16 +114,19 @@ class SqliteCache:
             if os.path.exists(cache_file_path):
                 os.remove(cache_file_path)
 
-            os.link(ref, cache_file_path)
-            new_file_out = merkl.io.FileRef(cache_file_path)
             if ref.rm_after_caching:
-                os.remove(ref)
+                shutil.move(ref, cache_file_path)
+            else:
+                shutil.copy(ref, cache_file_path)
+
+            new_file_out = merkl.io.FileRef(cache_file_path)
             return new_file_out
         elif isinstance(ref, merkl.io.DirRef):
             cache_dir_path = get_cache_out_dir_path(hash, makedirs=True)
-            shutil.copytree(ref, cache_dir_path)
             if ref.rm_after_caching:
-                shutil.rmtree(ref)
+                shutil.move(ref, cache_dir_path)
+            else:
+                shutil.copytree(ref, cache_dir_path)
 
             ref = merkl.io.DirRef(cache_dir_path, files=ref._files)
             return ref
