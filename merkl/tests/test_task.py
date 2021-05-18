@@ -28,6 +28,12 @@ def get_stderr(f):
     return out, err_output
 
 
+
+@task(deps=['test_dep'])
+def my_dep_task_for_pipeline():
+    return 3
+
+
 class TestTask(TestCaseWithMerklRepo):
     def setUp(self):
         super().setUp()
@@ -260,6 +266,13 @@ class TestTask(TestCaseWithMerklRepo):
             return 1
 
         self.assertTrue(f'<Future {get_hash_memory_optimized(filepath)}>' in my_dep_task.deps)
+
+        @pipeline
+        def my_pipeline():
+            return my_dep_task_for_pipeline()
+
+        self.assertEqual(len(my_pipeline.deps), 2)
+        self.assertEqual(my_pipeline.deps[1], 'test_dep')
 
 
     def test_future_operator_access(self):

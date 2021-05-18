@@ -100,11 +100,16 @@ def validate_resolve_deps(deps):
     # Collect deps for tasks
     extra_deps = []
     for dep in deps:
-        if isfunction(dep) and hasattr(dep, 'is_merkl') and dep.type == 'task':
-            extra_deps += validate_resolve_deps(dep.deps)
+        if (
+            isinstance(dep, FunctionDep) and
+            isfunction(dep.value) and
+            hasattr(dep.value, 'is_merkl') and
+            dep.value.type in 'task'
+        ):
+            extra_deps += validate_resolve_deps(dep.value.deps)
 
     resolved_deps = []
-    for i in range(len(deps + extra_deps)):
+    for i in range(len(deps)):
         name = None
         dep = deps[i]
         if isinstance(dep, FunctionDep):
