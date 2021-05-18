@@ -191,12 +191,19 @@ class SqliteCache:
 
     @classmethod
     def clear_all_except(cls, hashes):
+        num_items_in_cache = list(cls.cursor.execute('SELECT COUNT(*) FROM cache'))[0][0]
+        num_deleted = num_items_in_cache - len(hashes)
+        if num_deleted > 0:
+            logger.warning(f'Deleting approximately {num_deleted} items from cache')
+
         quoted_hashes = [f'"{hash}"' for hash in hashes]
         hashes_with_files = list(
             cls.cursor.execute(f"SELECT hash, ref_path, ref_is_dir FROM cache WHERE hash NOT IN ({','.join(quoted_hashes)}) AND (data IS NULL OR ref_path IS NOT NULL)")
         )
         cls.cursor.execute(f"DELETE FROM cache WHERE hash NOT IN ({','.join(quoted_hashes)})", )
 
+        if len(hashes_with_files) > 0:
+            logger.warning(f'Deleting {len(hashes_with_files)} files or directories from cache')
         for hash, ref_path, ref_is_dir in hashes_with_files:
             if ref_path is not None:
                 if ref_is_dir:

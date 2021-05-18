@@ -6,7 +6,7 @@ from pathlib import Path
 from enum import Enum
 from functools import lru_cache
 from inspect import getsource, isfunction, ismodule, getmodule
-from sigtools.specifiers import forwards_to_function, signature
+from sigtools.specifiers import forwards_to_function
 import merkl
 from merkl.utils import (
     doublewrap,
@@ -16,6 +16,7 @@ from merkl.utils import (
     find_function_deps,
     FunctionDep,
     get_hash_memory_optimized,
+    signature_with_default,
 )
 from merkl.logger import logger
 from merkl.future import Future
@@ -33,7 +34,10 @@ class HashMode(Enum):
 @lru_cache(maxsize=None)
 def code_hash(f, is_module=False):
     code_obj = getmodule(f) if is_module else f
-    code = textwrap.dedent(getsource(code_obj))
+    try:
+        code = textwrap.dedent(getsource(code_obj))
+    except:
+        code = code_obj.__name__
     m = hashlib.sha256()
     m.update(bytes(code, 'utf-8'))
     return m.hexdigest()
@@ -85,7 +89,7 @@ def validate_outs(outs, sig=None, return_type=None):
         if return_type != 'Dict' and not sig:
             raise TaskOutsError(f'Out is list/tuple/set of keys but return type is not dict: {return_type}')
     elif callable(outs) and sig is not None:
-        outs_sig = signature(outs)
+        outs_sig = signature_with_default(outs)
         if outs_sig.parameters.keys() != sig.parameters.keys():
             raise TaskOutsError(f'Outs function signature does not match task: {outs_sig} vs {sig}')
     elif return_type != 'Dict':
@@ -150,7 +154,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
     if not isinstance(hash_mode, HashMode):
         raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
 
-    batch_fn_sig = signature(batch_fn)
+    batch_fn_sig = signature_with_default(batch_fn)
     if len(batch_fn_sig.parameters.keys()) != 1:
         raise BatchTaskError(f'Batch function {batch_fn} must have exactly one input arg')
 
@@ -176,7 +180,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
             # Validate that args is a list of tuples, or single_fn has single input
             if not isinstance(args_tuple, tuple):
                 # If single_fn has multiple parameters, then `args_tuple` has to be a tuple
-                if len(signature(single_fn).parameters.keys()) != 1:
+                if len(signature_with_default(single_fn).parameters.keys()) != 1:
                     raise BatchTaskError(f'Batch arg {args_tuple} is not a tuple')
                 else:
                     args_tuple = (args_tuple,)
@@ -248,7 +252,7 @@ def task(
     sig=None,
 ):
     deps = deps or []
-    sig = sig if sig else signature(f)
+    sig = sig if sig else signature_with_default(f)
 
     return_type = None
     if outs is not None:
@@ -330,7 +334,7 @@ def task(
 @doublewrap
 def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
     deps = deps or []
-    sig = signature(f)
+    sig = signature_with_default(f)
 
     if not isinstance(hash_mode, HashMode):
         raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')

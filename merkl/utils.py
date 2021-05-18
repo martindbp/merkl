@@ -8,7 +8,7 @@ from functools import wraps
 from inspect import isfunction, ismodule, getmodule
 from typing import NamedTuple
 from stdlib_list import stdlib_list
-from sigtools.specifiers import forwards_to_function
+from sigtools.specifiers import forwards_to_function, signature
 import merkl
 from merkl import cache
 from merkl.exceptions import TaskOutsError, EvalError
@@ -95,7 +95,10 @@ class FunctionDep(NamedTuple):
 
 def find_function_deps(f):
     module = getmodule(f)
-    dedented_source = textwrap.dedent(inspect.getsource(f))
+    try:
+        dedented_source = textwrap.dedent(inspect.getsource(f))
+    except:
+        return []
     name_nodes = [node for node in ast.walk(ast.parse(dedented_source)) if isinstance(node, ast.Name)]
     deps = []
     seen = set()
@@ -157,7 +160,11 @@ def get_return_nodes(node, collect):
 
 
 def get_function_return_info(f):
-    dedented_source = textwrap.dedent(inspect.getsource(f))
+    try:
+        dedented_source = textwrap.dedent(inspect.getsource(f))
+    except:
+        return set(), set()
+
     function_ast = ast.parse(dedented_source).body[0]
     return_nodes = []
     for node in ast.iter_child_nodes(function_ast):
@@ -201,3 +208,15 @@ def collect_dag_futures(future, out_futures, include_parent_pipelines=False):
 
     for parent_future in future.parent_futures():
         collect_dag_futures(parent_future, out_futures)
+
+
+def _dummy(*args, **kwargs):
+    return
+
+default_signature = signature(_dummy)
+
+def signature_with_default(f):
+    try:
+        return signature(f)
+    except ValueError:
+        return default_signature
