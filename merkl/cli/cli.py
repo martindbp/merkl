@@ -48,6 +48,7 @@ def main():
         'run', description='Run a task or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
     run_parser.add_argument('--no-cache', action='store_true', help='Disable caching')
+    run_parser.add_argument('--clear', action='store_true', help='Clear cache of any unrelated items before running')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
 
     # ------------- DOT --------------
