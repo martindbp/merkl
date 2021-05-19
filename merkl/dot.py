@@ -11,7 +11,7 @@ MAX_DEPS = 3
 def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
     # NOTE: This is very bad code, but probably not worth spending time on...
     for future in futures:
-        is_cached_pipeline = future.parent_pipeline_future is not None and len(future.parent_futures()) == 0
+        is_cached_pipeline = future.parent_pipeline_future is not None and len(future.parent_futures) == 0
         node_future = future.parent_pipeline_future if is_cached_pipeline else future
         out_name = future.batch_idx if future.batch_idx is not None else future.out_name
 
@@ -101,7 +101,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             print(f'\t"out_{node_id}" -> "fn_{target_fn}"')
             printed.add(edge_name)
 
-        print_dot_graph_nodes(node_future.parent_futures(), code_args_hash, printed)
+        print_dot_graph_nodes(node_future.parent_futures, code_args_hash, printed)
 
 
 def print_dot_graph(futures, rankdir=None, transparent_bg=False):

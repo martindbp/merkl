@@ -193,6 +193,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
             out = single_fn(*args_tuple)
 
             any_out_not_cached = False
+            cached_futures = []
             for future in nested_collect(out, lambda x: isinstance(x, Future)):
                 # Set the invocation id to the same for all futures
                 future.invocation_id = invocation_id
@@ -214,19 +215,22 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
 
                 if not future.in_cache():
                     any_out_not_cached = True
+                else:
+                    cached_futures.append(future)
 
             if any_out_not_cached:
+                for future in cached_futures:
+                    future.clear_cache()  # clear the previous cached value
+
                 for future in nested_collect(out, lambda x: isinstance(x, Future)):
                     # Need to set the shared cache to be shared across all batch invocations
                     # NOTE: important only share this cache for outs that are not already in cache
-                    future.clear_cache()  # clear the previous cached value, in case some of the outs were cached but not all
                     future.outs_shared_cache = outs_shared_cache
                     futures.append(future)
 
-            outs.append(out)
-
-            if any_out_not_cached:
                 non_cached_outs_args.append((out, orig_args_tuple))
+
+            outs.append(out)
 
         futures_set = set(futures)
         for future in futures:

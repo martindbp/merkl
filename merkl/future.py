@@ -1,6 +1,7 @@
 import json
 import hashlib
 from collections import defaultdict
+from functools import cached_property
 import merkl.cache
 from merkl.io import write_track_file, write_future, FileRef, DirRef
 from merkl.utils import OPERATORS, nested_map, nested_collect
@@ -21,13 +22,13 @@ def map_future_to_value(val):
     return val
 
 
-FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'outs_shared_futures']
+FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'outs_shared_futures', '_parent_futures']
 
 class Future:
     __slots__ = [
         'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
-        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
+        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures', '_parent_futures',
     ]
 
     def __init__(
@@ -78,6 +79,7 @@ class Future:
         self.batch_idx = batch_idx
         self.cache_temporarily = cache_temporarily
         self.outs_shared_futures = None
+        self._parent_futures = None
 
     @property
     def code_args_hash(self):
@@ -114,15 +116,21 @@ class Future:
         self._hash = m.hexdigest()
         return self._hash
 
+    @property
     def parent_futures(self):
+        if self._parent_futures is not None:
+            return self._parent_futures
+
         if not self.bound_args:
+            self._parent_futures = []
             return []
 
         is_future = lambda x: isinstance(x, Future)
-        return (
+        self._parent_futures = (
             nested_collect(self.bound_args.args, is_future) +
             nested_collect(self.bound_args.kwargs, is_future)
         )
+        return self._parent_futures
 
     def in_cache(self):
         if self.cache is None:
@@ -231,7 +239,7 @@ class Future:
                 specific_out_bytes = self.serializer.dumps(specific_out)
                 self.cache.add(self.hash, specific_out_bytes, ref=(specific_out if specific_out_is_ref else None))
 
-                for parent_future in self.parent_futures():
+                for parent_future in self.parent_futures:
                     if parent_future.cache_temporarily:
                         parent_future.clear_cache()
 

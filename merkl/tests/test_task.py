@@ -449,7 +449,7 @@ class TestTask(TestCaseWithMerklRepo):
         fut2 = my_pipeline(2)
         self.assertTrue(fut2.in_cache())
         self.assertEqual(fut2.hash, fut1.hash)
-        self.assertEqual(fut2.parent_futures(), [])
+        self.assertEqual(fut2.parent_futures, [])
 
     def test_pipe_syntax(self):
         @task

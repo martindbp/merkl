@@ -206,7 +206,7 @@ def collect_dag_futures(future, out_futures, include_parent_pipelines=False):
     if future.parent_pipeline_future is not None:
         out_futures.add(future.parent_pipeline_future)
 
-    for parent_future in future.parent_futures():
+    for parent_future in future.parent_futures:
         collect_dag_futures(parent_future, out_futures)
 
 
