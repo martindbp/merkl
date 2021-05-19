@@ -134,7 +134,7 @@ class SqliteCache:
                 os.remove(cache_file_path)
 
             if ref.rm_after_caching:
-                shutil.move(ref, cache_file_path)
+                os.rename(ref, cache_file_path)
             else:
                 shutil.copy(ref, cache_file_path)
 
@@ -143,7 +143,7 @@ class SqliteCache:
         elif isinstance(ref, merkl.io.DirRef):
             cache_dir_path = get_cache_out_dir_path(hash, makedirs=True)
             if ref.rm_after_caching:
-                shutil.move(ref, cache_dir_path)
+                os.rename(ref, cache_dir_path)
             else:
                 shutil.copytree(ref, cache_dir_path)
 
@@ -215,7 +215,7 @@ class SqliteCache:
 
     @classmethod
     def track_file(cls, path, modified=None, merkl_hash=None, md5_hash=None):
-        logger.debug(f'Track file {path} modified={modified} merkl_hash={merkl_hash} md5_hash={md5_hash}')
+        logger.debug(f'Hashing file {path} modified={modified} merkl_hash={merkl_hash} md5_hash={md5_hash}')
         modified = modified or get_modified_time(path)
         cls.connect()
         cls.cursor.execute("INSERT INTO files VALUES (?, ?, ?, ?)", (path, modified, merkl_hash, md5_hash))
