@@ -357,7 +357,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
 
-        outs = Future(
+        pipeline_future = Future(
             f,
             pipeline_code_hash,
             1,
@@ -368,7 +368,30 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
             bound_args,
             is_pipeline=True,
             invocation_id=next_invocation_id,
-        ).eval()
+        )
+
+        if pipeline_future.in_cache():
+            # If a pipeline output was cached but the futures never evaluated
+            # (e.g. due to a crash), then when we unserialize and try to use
+            # them, merkl will crash. To prevent this, we check that all
+            # futures are in cache, otherwise we remove this pipeline result
+            # from the cache and re-evaluate
+            outs = pipeline_future.eval()
+
+            out_futures = nested_collect(outs, lambda x: isinstance(x, Future))
+            out_future_not_cached = False
+            for future in out_futures:
+                if not future.in_cache():
+                    out_future_not_cached = True
+                    break
+
+            if out_future_not_cached:
+                logger.debug(f'Pipeline output for {f} was cached, but output futures were not, so re-evaluating')
+                pipeline_future.clear_cache()
+                outs = pipeline_future.eval()
+        else:
+            outs = pipeline_future.eval()
+
 
         next_invocation_id += 1
 

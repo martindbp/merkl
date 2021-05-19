@@ -280,6 +280,33 @@ class TestCache(TestCaseWithMerklRepo):
         self.assertTrue(SqliteCache.has(out1.hash))
         self.assertTrue(SqliteCache.has(out1.parent_pipeline_future.hash))
 
+    def test_pipeline_cache_invalidation(self):
+        # Test that a cached pipeline out is removed/recalculated if it contains a future which has not been evaled/cached
+
+        @task
+        def my_task(val):
+            return 2*val
+
+        called = False
+
+        @pipeline
+        def my_pipeline():
+            nonlocal called
+            called = True
+            return my_task(3)
+
+        out = my_pipeline() # this should cache the Future output from my_task, but we neve evaluate it
+        self.assertTrue(called)
+
+        called = False
+        out = my_pipeline()
+        self.assertTrue(called)
+
+        out.eval()
+        called = False
+        out = my_pipeline()
+        self.assertFalse(called)
+
 
 if __name__ == '__main__':
     unittest.main()
