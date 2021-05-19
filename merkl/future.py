@@ -185,12 +185,14 @@ class Future:
         specific_out = None
         specific_out_is_ref = False
         outputs = None
+        called_function = False
         if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
             outputs = self.outs_shared_cache.get(self.code_args_hash)
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
             logger.debug(f'Calling {self.fn}')
+            called_function = True
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
 
             if self.code_args_hash:
@@ -239,9 +241,10 @@ class Future:
                 specific_out_bytes = self.serializer.dumps(specific_out)
                 self.cache.add(self.hash, specific_out_bytes, ref=(specific_out if specific_out_is_ref else None))
 
-                for parent_future in self.parent_futures:
-                    if parent_future.cache_temporarily:
-                        parent_future.clear_cache()
+                if called_function:  # Make sure we only clear parent futures once for all the output futures
+                    for parent_future in self.parent_futures:
+                        if parent_future.cache_temporarily:
+                            parent_future.clear_cache()
 
             self.write_output_files(specific_out, specific_out_bytes)
 
