@@ -126,10 +126,13 @@ class Future:
             return []
 
         is_future = lambda x: isinstance(x, Future)
-        self._parent_futures = (
-            nested_collect(self.bound_args.args, is_future) +
-            nested_collect(self.bound_args.kwargs, is_future)
-        )
+        if self.batch_idx is not None:
+            self._parent_futures = nested_collect(self.bound_args.args[0][self.batch_idx], is_future)
+        else:
+            self._parent_futures = (
+                nested_collect(self.bound_args.args, is_future) +
+                nested_collect(self.bound_args.kwargs, is_future)
+            )
         return self._parent_futures
 
     def in_cache(self):
@@ -198,10 +201,17 @@ class Future:
             if self.code_args_hash:
                 self.outs_shared_cache[self.code_args_hash] = outputs
 
+                if self.cache:
+                    self.cache.no_commit = True  # for efficiency, commit only after all futures have been cached
+
                 for future in self.outs_shared_futures or set():
                     if future.hash == self.hash:
                         continue
                     future._eval()
+
+                if self.cache:
+                    self.cache.no_commit = False
+                    self.cache.commit()
 
         if isinstance(outputs, tuple) and len(outputs) != self.outs and self.outs != 1:
             raise TaskOutsError(f'Wrong number of outputs: {len(outputs)}. Expected {self.outs}')

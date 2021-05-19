@@ -4,6 +4,7 @@ import clize
 
 from merkl.utils import evaluate_futures
 from merkl.dot import print_dot_graph
+from merkl import cache
 
 
 def evaluate_futures_wrapper(f, no_cache, clear):
@@ -12,6 +13,7 @@ def evaluate_futures_wrapper(f, no_cache, clear):
         outs = f(*args, **kwargs)
         if clear:
             cache.clear(outs, keep=True)
+
         return evaluate_futures(outs, no_cache)
 
     return _wrap

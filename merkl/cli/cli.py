@@ -47,8 +47,8 @@ def main():
     run_parser = subparsers.add_parser(
         'run', description='Run a task or pipeline function')
     run_parser.set_defaults(command='run', subcommand='run')
-    run_parser.add_argument('--no-cache', action='store_true', help='Disable caching')
-    run_parser.add_argument('--clear', action='store_true', help='Clear cache of any unrelated items before running')
+    run_parser.add_argument('-n', '--no-cache', action='store_true', help='Disable caching')
+    run_parser.add_argument('-c', '--clear', action='store_true', help='Clear cache of any unrelated items before running')
     run_parser.add_argument('module_function', help='Module function to run (<module>.<function>)')
 
     # ------------- DOT --------------
@@ -57,14 +57,14 @@ def main():
     dot_parser.set_defaults(command='dot', subcommand='dot')
     dot_parser.add_argument('--rankdir', choices=['TB', 'LR'], help='Value for the rankdir dot graph parameter')
     dot_parser.add_argument('--transparent-bg', action='store_true', help='Option to output transparent background')
-    dot_parser.add_argument('--no-cache', action='store_true', help='Disable caching')
+    dot_parser.add_argument('-n', '--no-cache', action='store_true', help='Disable caching')
     dot_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
 
     # ------------- CLEAR --------------
     clear_parser = subparsers.add_parser(
         'clear', description='Clears the cache optionially with respect to a pipeline or task')
     clear_parser.set_defaults(command='clear', subcommand='clear')
-    clear_parser.add_argument('--keep', action='store_true', help='Keep reachable all values from <module_function>')
+    clear_parser.add_argument('-k', '--keep', action='store_true', help='Keep reachable all values from <module_function>')
     clear_parser.add_argument('--keep-outs', action='store_true', help='Keep only final <module_function> outputs')
     clear_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
 

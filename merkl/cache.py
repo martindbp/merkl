@@ -55,7 +55,8 @@ def get_modified_time(path):
 
 
 def clear(outs, keep=False, keep_outs=False):
-    futures = nested_collect(outs, lambda x: isinstance(x, merkl.future.Future))
+    from merkl.future import Future
+    futures = nested_collect(outs, lambda x: isinstance(x, Future))
 
     dag_futures = set()
     for future in futures:
@@ -74,6 +75,7 @@ def clear(outs, keep=False, keep_outs=False):
 
 class SqliteCache:
     connection = None
+    no_commit = False
 
     @classmethod
     def connect(cls):
@@ -86,6 +88,10 @@ class SqliteCache:
                     exit(1)
                 raise
             cls.cursor = cls.connection.cursor()
+
+    @classmethod
+    def commit(cls):
+        cls.connection.commit()
 
     @classmethod
     def create_cache(cls):
@@ -165,7 +171,8 @@ class SqliteCache:
 
         cls.connect()
         cls.cursor.execute("INSERT INTO cache VALUES (?, ?, ?, ?)", (hash, content_bytes, ref_path, ref_is_dir))
-        cls.connection.commit()
+        if not cls.no_commit:
+            cls.connection.commit()
 
     @classmethod
     def clear(cls, hash):
@@ -187,7 +194,8 @@ class SqliteCache:
             os.remove(get_cache_file_path(hash))
 
         cls.cursor.execute("DELETE FROM cache WHERE hash=?", (hash,))
-        cls.connection.commit()
+        if not cls.no_commit:
+            cls.connection.commit()
 
     @classmethod
     def clear_all_except(cls, hashes):
@@ -219,7 +227,8 @@ class SqliteCache:
         modified = modified or get_modified_time(path)
         cls.connect()
         cls.cursor.execute("INSERT INTO files VALUES (?, ?, ?, ?)", (path, modified, merkl_hash, md5_hash))
-        cls.connection.commit()
+        if not cls.no_commit:
+            cls.connection.commit()
 
     @classmethod
     def get_file_mod_hash(cls, path, modified=None):

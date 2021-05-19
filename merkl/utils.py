@@ -75,6 +75,21 @@ def nested_map(structure, map_function, convert_tuples_to_lists=False, include_l
     return map_function(*args)
 
 
+def nested_apply(structure, apply_function, include_level=False, curr_level=0):
+    if isinstance(structure, tuple) or isinstance(structure, list):
+        for s in structure:
+            nested_apply(s, apply_function, include_level, curr_level+1)
+    elif isinstance(structure, dict):
+        for key, val in structure.items():
+            nested_apply(val, apply_function, include_level, curr_level+1)
+
+    args = [structure]
+    if include_level:
+        args.append(curr_level)
+
+    apply_function(*args)
+
+
 def nested_collect(structure, collect_function, include_level=False):
     collected = []
     def _collect(*args):
@@ -84,7 +99,7 @@ def nested_collect(structure, collect_function, include_level=False):
 
         return arg
 
-    nested_map(structure, _collect, include_level=include_level)
+    nested_apply(structure, _collect, include_level=include_level)
     return collected
 
 
@@ -199,14 +214,13 @@ def evaluate_futures(outs, no_cache):
 
 
 def collect_dag_futures(future, out_futures, include_parent_pipelines=False):
-    if future in out_futures:
-        return
-
     out_futures.add(future)
-    if future.parent_pipeline_future is not None:
+    if include_parent_pipelines and future.parent_pipeline_future is not None:
         out_futures.add(future.parent_pipeline_future)
 
     for parent_future in future.parent_futures:
+        if parent_future in out_futures:
+            continue
         collect_dag_futures(parent_future, out_futures)
 
 
