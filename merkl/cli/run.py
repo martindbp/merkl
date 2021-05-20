@@ -27,4 +27,4 @@ class RunAPI:
         function = getattr(module, function_name)
         # Function output values may contain Futures, so wrap the function to evaluate them
         function = evaluate_futures_wrapper(function, no_cache, clear)
-        clize.run(function, args=['merkl-run', *self.unknown_args])
+        clize.run(function, args=['merkl-run', *self.unknown_args], exit=False)

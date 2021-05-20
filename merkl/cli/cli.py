@@ -2,6 +2,8 @@ import os
 import sys
 import logging
 import argparse
+import cProfile, pstats, io
+from pstats import SortKey
 from pathlib import Path
 
 from merkl.cli.init import InitAPI
@@ -26,7 +28,7 @@ def main():
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='Verbose output')
     parser.add_argument(
-        '-q', '--quiet', action='store_true', help='No printing to stdout')
+        '-p', '--profile', action='store_true', help='Profile the command')
 
     parser.set_defaults(command='help', subcommand='')
     subparsers = parser.add_subparsers()
@@ -75,8 +77,8 @@ def main():
     # Pop commands that should not go to the route
     kwargs.pop('command')
     kwargs.pop('subcommand')
-    quiet = kwargs.pop('quiet')
     verbose = kwargs.pop('verbose')
+    profile = kwargs.pop('profile')
     if verbose:
         logger.setLevel(logging.DEBUG)
 
@@ -91,4 +93,15 @@ def main():
     api_route = getattr(api, args.command)
     api_route.unknown_args = unknown_args
     route = getattr(api_route, args.subcommand)
-    route(**kwargs)
+
+    if profile:
+        with cProfile.Profile() as pr:
+            route(**kwargs)
+
+        s = io.StringIO()
+        sortby = SortKey.CUMULATIVE
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+    else:
+        route(**kwargs)

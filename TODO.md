@@ -1,10 +1,8 @@
+Catching KeyboardInterrupts doesn't work. How can be interrupt a loop and still continue?
+
 Serializers for args?
 
-Add command for clearing cache
-
 Make some kind of BaseCache that can be inherited from
-
-Add verbose command and logging
 
 Allow files to be seperately tracked if a function returns a single DirOut, use out keys as filenames
 
