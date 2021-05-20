@@ -290,7 +290,6 @@ class TestTask(TestCaseWithMerklRepo):
         self.assertEqual(len(my_pipeline.deps), 2)
         self.assertEqual(my_pipeline.deps[1], 'test_dep')
 
-
     def test_future_operator_access(self):
         # Test that Future cannot be accessed by checking some operators
         future = embed_bert('sentence')

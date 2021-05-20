@@ -1,4 +1,4 @@
-# MerkL - flexible ML pipelines in Python with great caching
+# MerkL - ML pipelines in pure Python with great caching
 
 MerkL is a tool for creating ML pipelines in pure Python that are useful for
 development and experimentation, but also easy to deploy to production without
@@ -181,7 +181,7 @@ write_future(train(preprocess(read_future('train.csv'))), 'model.bin')
 read_future('train.csv') | preprocess | train > 'model.bin'
 ```
 
-### Pipeline decorator
+### Pipelines
 
 Pipeline functions can optionally be decorated with the `pipeline` decorator. The decorator provides caching of the
 graph construction (as opposed to only the evaluation). This is useful when for example there is an inference stage
@@ -277,12 +277,37 @@ def my_task():
     pass
 ```
 
-As a convenience, you can use the `find_pip_version()` function to easily add a library and its version as a hash key:
+As a convenience, you can use the `pip_version()` function to easily add a library's version string as a hash key:
 
 ```python
-@task(deps=[find_pip_version('numpy')])
+@task(deps=[pip_version('numpy')])
 def my_task():
     pass
 ```
 
-### Fine-grained caching control
+Files and directories can be added as dependencies using the `FileRef` and `DirRef` classes:
+
+```python
+from merkl import task, FileRef
+@task(deps=[FileRef('my_file.txt')])
+def my_task():
+    pass
+```
+
+Refs added as dependencies will contribute the file content hash to the task.
+
+### Filesystem IO
+
+TBD
+
+### Task versions
+
+TBD
+
+### The Cache
+
+TBD
+
+### Wrapping shell commands
+
+TBD

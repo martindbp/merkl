@@ -1,5 +1,4 @@
-Instead of referring to an out as the hash of code+args and out_name, we could use that tuple instead. This would save on hashing work if there are a lot of outs. It would also make it possible to fetch all outs from the DB simultaneously
-    This is a problem for the Future.__hash__ function which needs an int. Plus, turning the hash field into TEXT may slow down the database
+Add command to print debug info about a task/pipeline, e.g. printing its deps, fn_code_hash. If we supply a task/pipeline with args and a hash to print, we can print the inputs, outputs and other info
 
 Catching KeyboardInterrupts doesn't work. How can be interrupt a loop and still continue?
 
