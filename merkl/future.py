@@ -7,7 +7,7 @@ from merkl.io import write_track_file, write_future, FileRef, DirRef
 from merkl.utils import OPERATORS, nested_map, nested_collect
 from merkl.cache import get_modified_time
 from merkl.exceptions import *
-from merkl.logger import logger
+from merkl.logger import logger, log_if_slow
 
 
 def map_to_hash(val):
@@ -151,7 +151,8 @@ class Future:
                 # reading from source file, not serialized
                 return val, val
 
-            return self.serializer.loads(val), val
+            deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn} out {self.hash} slow')
+            return deserialized, val
 
     def clear_cache(self):
         if self.cache is None:
@@ -171,7 +172,7 @@ class Future:
             # If not up to date, serialize and write the new file
             if not up_to_date:
                 if specific_out_bytes is None:
-                    specific_out_bytes = self.serializer.dumps(specific_out)
+                    specific_out_bytes = log_if_slow(lambda: self.serializer.dumps(specific_out), f'Serializing {sel.fn} out {self.hash} slow')
 
                 write_track_file(path, specific_out_bytes, self.hash, self.cache)
 
