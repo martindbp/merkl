@@ -32,7 +32,10 @@ class HashMode(Enum):
 
 
 @lru_cache(maxsize=None)
-def code_hash(f, is_module=False):
+def code_hash(f, is_module=False, version=None):
+    if version is not None:
+        return version
+
     code_obj = getmodule(f) if is_module else f
     try:
         code = textwrap.dedent(getsource(code_obj))
@@ -149,7 +152,7 @@ def validate_resolve_deps(deps):
 
 
 @doublewrap
-def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCache, serializer=None):
+def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCache, serializer=None, version=None):
     if single_fn is None:
         raise BatchTaskError(f"'single_fn' has to be supplied")
 
@@ -163,7 +166,7 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
     if len(batch_fn_sig.parameters.keys()) != 1:
         raise BatchTaskError(f'Batch function {batch_fn} must have exactly one input arg')
 
-    batch_fn_code_hash = code_hash(batch_fn, True)
+    batch_fn_code_hash = code_hash(batch_fn, True, version)
 
     @forwards_to_function(batch_fn)
     def wrap(args):
@@ -263,6 +266,7 @@ def task(
     cache=SqliteCache,
     serializer=None,
     sig=None,
+    version=None,
 ):
     deps = deps or []
     sig = sig if sig else signature_with_default(f)
@@ -287,7 +291,7 @@ def task(
     if not isinstance(hash_mode, HashMode):
         raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
 
-    fn_code_hash = code_hash(f, hash_mode == HashMode.MODULE)
+    fn_code_hash = code_hash(f, hash_mode == HashMode.MODULE, version)
 
     if hash_mode == HashMode.FIND_DEPS:
         deps += find_function_deps(f)
