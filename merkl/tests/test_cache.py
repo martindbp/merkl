@@ -8,6 +8,7 @@ from merkl.tests import TestCaseWithMerklRepo
 from merkl.io import FileRef, DirRef
 from merkl.cache import get_cache_file_path, SqliteCache, BLOB_DB_SIZE_LIMIT_BYTES
 from merkl.utils import evaluate_futures
+from merkl.util_tasks import combine_file_refs
 
 
 class TestCache(TestCaseWithMerklRepo):
@@ -164,6 +165,34 @@ class TestCache(TestCaseWithMerklRepo):
             return dir_out
 
         my_task().eval()
+
+        # Test combine_file_refs / DirRef.link_file_ref_into_dir()
+        num_files = 5
+
+        @task(outs=num_files)
+        def my_task():
+            refs = []
+            for i in range(num_files):
+                file_ref = FileRef()
+                with open(file_ref, 'w') as f:
+                    f.write(str(i))
+                refs.append(file_ref)
+            return refs
+
+        file_refs = my_task()
+        dir_ref = combine_file_refs(file_refs)
+        dir_ref = dir_ref.eval()
+        self.assertEqual(len(dir_ref.files), num_files)
+        self.assertTrue(os.path.exists(file_refs[0].eval()))
+        dir_file_path = Path(dir_ref) / file_refs[0].eval()
+        self.assertTrue(os.path.exists(dir_file_path))
+        with open(dir_file_path, 'r') as f:
+            f1 = f.read()
+
+        with open(file_refs[0].eval(), 'r') as f:
+            f2 = f.read()
+
+        self.assertEqual(f1, f2)
 
     def test_future_serialization(self):
         @task

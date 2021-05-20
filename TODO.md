@@ -1,3 +1,6 @@
+Instead of referring to an out as the hash of code+args and out_name, we could use that tuple instead. This would save on hashing work if there are a lot of outs. It would also make it possible to fetch all outs from the DB simultaneously
+    This is a problem for the Future.__hash__ function which needs an int. Plus, turning the hash field into TEXT may slow down the database
+
 Catching KeyboardInterrupts doesn't work. How can be interrupt a loop and still continue?
 
 Serializers for args?

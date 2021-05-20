@@ -22,6 +22,7 @@ from merkl.logger import logger
 from merkl.future import Future
 from merkl.exceptions import *
 from merkl.cache import SqliteCache
+from merkl.io import DirRef, FileRef
 
 next_invocation_id = 0
 
@@ -144,6 +145,8 @@ def validate_resolve_deps(deps):
             dep = dep.decode('utf-8')
         elif isinstance(dep, Future):
             dep =  f'<Future {dep.hash}>'
+        elif isinstance(dep, FileRef) or isinstance(dep, DirRef):
+            dep = dep.hash_repr()
         elif not isinstance(dep, str):
             try:
                 dep = json.dumps(dep)

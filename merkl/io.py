@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+import hashlib
 import collections
 from pathlib import Path
 from functools import partial
@@ -67,6 +68,15 @@ def fetch_or_compute_md5(path, cache=merkl.cache.SqliteCache, store=True):
     return md5_hash
 
 
+def fetch_or_compute_dir_md5(files, cache=merkl.cache.SqliteCache, store=True):
+    h = hashlib.new('md5')
+    for file_path in files:
+        file_md5 = fetch_or_compute_dir_md5(file_path, cache, store)
+        h.update(bytes(file_md5, 'utf-8'))
+
+    return h.hexdigest()
+
+
 def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCache):
     if isinstance(content_bytes, FileRef):
         shutil.copy(content_bytes, path)
@@ -82,6 +92,8 @@ def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCa
 
 
 class FileRef(str):
+    __slots__ = ['rm_after_caching', '_hash']
+
     def __new__(cls, path=None, ext='bin', rm_after_caching=False):
         if path is None:
             suffix = None if ext is None else f'.{ext}'
@@ -95,14 +107,28 @@ class FileRef(str):
         else:
             self.rm_after_caching = rm_after_caching
 
+        self._hash = None
+
     def __repr__(self):
         return f'<FileRef {self}>'
+
+    def hash_repr(self):
+        return f'<FileRef {self}: {self.hash}>'
 
     def remove(self):
         os.remove(self)
 
+    @property
+    def hash(self):
+        if self._hash is not None:
+            return self._hash
+
+        self._hash = fetch_or_compute_md5(self)
+        return self._hash
 
 class DirRef(str):
+    __slots__ = ['rm_after_caching', '_hash', '_files']
+
     def __new__(cls, path=None, rm_after_caching=False, files=None):
         if path is None:
             path = mkdtemp(dir=merkl.cache.get_tmp_dir())
@@ -117,14 +143,16 @@ class DirRef(str):
         else:
             self.rm_after_caching = rm_after_caching
 
+        self._hash = None
         self._files = [] if files is None else files
 
     def get_new_file(self, name=None, ext=None):
         if name is not None:
-            return str(Path(self) / name)
+            file_path = str(Path(self) / name)
+        else:
+            suffix = None if ext is None else f'.{ext}'
+            file_path = _get_tmp_filename(suffix=suffix, dir=self)
 
-        suffix = None if ext is None else f'.{ext}'
-        file_path = _get_tmp_filename(suffix=suffix, dir=self)
         self._files.append(Path(file_path).name)
         return file_path
 
@@ -139,5 +167,23 @@ class DirRef(str):
     def __repr__(self):
         return f'<DirRef {self}>'
 
+    def hash_repr(self):
+        return f'<DirRef {self}: {self.hash}>'
+
     def remove(self):
         shutil.rmtree(self)
+
+    def add_file_ref(self, file_ref, link=True):
+        filename = os.path.basename(file_ref)
+        if link:
+            os.link(file_ref, self.get_new_file(name=filename))
+        else:
+            shutil.copy(file_ref, self.get_new_file(name=filename))
+
+    @property
+    def hash(self):
+        if self._hash is not None:
+            return self._hash
+
+        self._hash = fetch_or_compute_dir_md5(self.files)
+        return self._hash

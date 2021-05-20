@@ -11,7 +11,7 @@ from merkl.future import Future
 from merkl.task import task, batch, pipeline, HashMode
 from merkl.exceptions import *
 from merkl.utils import get_hash_memory_optimized
-from merkl.io import path_future
+from merkl.io import FileRef, DirRef
 
 
 def get_stderr(f):
@@ -261,16 +261,27 @@ class TestTask(TestCaseWithMerklRepo):
         self.assertTrue('my_global_variable' in deps)
         self.assertTrue('_my_fn' in deps)
 
-        # Test path_future as dep
+        # Test FileRef as dep
         filepath = '/tmp/my_file.txt'
         with open(filepath, 'w') as f:
             f.write('test')
 
-        @task(deps=[path_future(filepath)])
+        @task(deps=[FileRef(filepath)])
         def my_dep_task():
             return 1
 
-        self.assertTrue(f'<Future {get_hash_memory_optimized(filepath)}>' in my_dep_task.deps)
+        self.assertEqual(my_dep_task.deps[0], f'<FileRef /tmp/my_file.txt: {get_hash_memory_optimized(filepath)}>')
+
+        # Test DirRef as dep
+        filepath2 = '/tmp/my_file2.txt'
+        with open(filepath2, 'w') as f:
+            f.write('test2')
+
+        @task(deps=[DirRef('/tmp/')])
+        def my_dep_task():
+            return 1
+
+        self.assertTrue(my_dep_task.deps[0].startswith('<DirRef /tmp/:'))
 
         @pipeline
         def my_pipeline():
