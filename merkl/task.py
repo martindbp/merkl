@@ -248,6 +248,10 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
                 future.batch_idx = i
 
         next_invocation_id = invocation_id + 1
+
+        if len(outs) > 1000:
+            logger.debug(f'Batch task {batch_fn} has many outs ({len(outs)}), beware that hashing this many outs as args to another task may be slow')
+
         return outs
 
     wrap.is_merkl = True
@@ -338,7 +342,13 @@ def task(
 
         if is_single:
             return outputs[0]
-        return outputs if resolved_return_type == 'Dict' else tuple(outputs.values())
+
+        outputs = outputs if resolved_return_type == 'Dict' else tuple(outputs.values())
+
+        if len(outputs) > 1000:
+            logger.debug(f'Task {f} has many outs ({len(outputs)}), beware that hashing this many outs as args to another task may be slow')
+
+        return outputs
 
     wrap.is_merkl = True
     wrap.type = 'task'
@@ -401,11 +411,16 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
                 logger.debug(f'Pipeline output for {f} was cached, but output futures were not, so re-evaluating')
                 pipeline_future.clear_cache()
                 outs = pipeline_future.eval()
+
+            num_futures = len(out_futures)
         else:
             outs = pipeline_future.eval()
-
+            out_futures = nested_collect(outs, lambda x: isinstance(x, Future))
 
         next_invocation_id += 1
+
+        if len(out_futures) > 1000:
+            logger.debug(f'Pipeline {f} has many output futures ({len(out_futures)}), beware that hashing this many futures as args to another task may be slow')
 
         return outs
 
