@@ -34,6 +34,11 @@ def my_dep_task_for_pipeline():
     return 3
 
 
+@task(version='0.1')
+def my_version_task():
+    return 1
+
+
 class TestTask(TestCaseWithMerklRepo):
     def setUp(self):
         super().setUp()
@@ -464,6 +469,13 @@ class TestTask(TestCaseWithMerklRepo):
         res2 = task2(task1())
         self.assertEqual(res1.hash, res2.hash)
 
+    def test_version(self):
+        with self.assertRaises(ValueError):
+            @task(version=1)
+            def my_task():
+                return 1
+
+        self.assertEqual(my_version_task().fn_code_hash, 'test_task.my_version_task-0.1')
 
 if __name__ == '__main__':
     unittest.main()

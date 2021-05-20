@@ -33,10 +33,17 @@ class HashMode(Enum):
 
 @lru_cache(maxsize=None)
 def code_hash(f, is_module=False, version=None):
+    module = None
+    if is_module:
+        module = getmodule(f)
+    code_obj = module if is_module else f
     if version is not None:
-        return version
+        if not isinstance(version, str):
+            raise ValueError(f'Task version was not a string: {version}: {type(version)}')
+        if module is None:
+            module = getmodule(f)
+        return f'{module.__name__}.{f.__name__}-{version}'
 
-    code_obj = getmodule(f) if is_module else f
     try:
         code = textwrap.dedent(getsource(code_obj))
     except:
