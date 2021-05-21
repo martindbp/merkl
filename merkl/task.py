@@ -116,7 +116,7 @@ def validate_resolve_deps(deps):
             isinstance(dep, FunctionDep) and
             isfunction(dep.value) and
             hasattr(dep.value, 'is_merkl') and
-            dep.value.type in 'task'
+            dep.value.type in ['task', 'batch']
         ):
             extra_deps += validate_resolve_deps(dep.value.deps)
 
@@ -280,6 +280,7 @@ def batch(
     wrap.type = 'batch'
     wrap.outs = 1
     wrap.orig_fn = batch_fn
+    wrap.deps = single_fn.deps
     return wrap
 
 
