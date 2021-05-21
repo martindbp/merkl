@@ -177,6 +177,9 @@ class Future:
             return deserialized, val
 
     def clear_cache(self):
+        if self.cache_in_memory and self.hash in MEMORY_CACHE:
+            del MEMORY_CACHE[self.hash]
+
         if self.cache is None:
             return
 
