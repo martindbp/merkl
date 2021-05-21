@@ -7,7 +7,7 @@ import dill
 
 import merkl.cache
 from merkl.io import write_track_file, write_future, FileRef, DirRef
-from merkl.utils import OPERATORS, nested_map, nested_collect
+from merkl.utils import OPERATORS, nested_map, nested_collect, function_descriptive_name
 from merkl.cache import get_modified_time, MEMORY_CACHE
 from merkl.exceptions import *
 from merkl.logger import logger, log_if_slow
@@ -33,7 +33,7 @@ FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'outs_shared_futures', '_parent_fut
 
 class Future:
     __slots__ = [
-        'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
+        'fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
         '_parent_futures', 'cache_in_memory',
@@ -61,8 +61,6 @@ class Future:
         cache_in_memory=False,
     ):
         self.fn = fn
-        if fn and hasattr(fn, '__name__'):
-            self.fn_name = fn.__name__
         self.fn_code_hash = fn_code_hash
         self.outs = outs
         self.out_name = out_name
@@ -99,13 +97,13 @@ class Future:
         if not self.bound_args:
             return None
 
-        default = partial(_code_args_serializer_default, fn_name=self.fn.__name__)
+        default = partial(_code_args_serializer_default, fn_name=function_descriptive_name(self.fn))
 
         # Hash args, kwargs and code together
         hash_data = {
             'args': nested_map(self.bound_args.args, map_to_hash, convert_tuples_to_lists=True),
             'kwargs': nested_map(self.bound_args.kwargs, map_to_hash, convert_tuples_to_lists=True),
-            'function_name': self.fn.__name__,
+            'function_name': function_descriptive_name(self.fn, include_module=False),
             'function_code_hash': self.fn_code_hash,
             'function_deps': self.deps or [],
         }
@@ -202,6 +200,7 @@ class Future:
 
     def eval(self):
         if self.in_cache():
+            logger.debug(f'{function_descriptive_name(self.fn)}:{self.out_name} output was cached')
             specific_out, specific_out_bytes = self.get_cache()
             self.write_output_files(specific_out, specific_out_bytes)
         else:
@@ -222,7 +221,7 @@ class Future:
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
-            logger.debug(f'Calling {self.fn}')
+            logger.debug(f'Calling {function_descriptive_name(self.fn)} (out_name={self.out_name})')
             called_function = True
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
 
@@ -295,7 +294,7 @@ class Future:
         # NOTE: a future is only pickled/serialized when it is returned by a pipeline 
 
         if self.cache is None:
-            raise SerializationError(f'Serializing {repr(self)} ({self.fn}) but there is no cache set')
+            raise SerializationError(f'Serializing {repr(self)} ({function_descriptive_name(self.fn)}: {self.out_name}) but there is no cache set')
 
         # Trigger calculation of _hash and _code_args_hash that we want to serialize
         self.hash

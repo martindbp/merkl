@@ -4,7 +4,7 @@ import json
 import inspect
 import hashlib
 import textwrap
-from functools import wraps
+from functools import wraps, lru_cache
 from inspect import isfunction, ismodule, getmodule
 from typing import NamedTuple
 from stdlib_list import stdlib_list
@@ -234,3 +234,14 @@ def signature_with_default(f):
         return signature(f)
     except ValueError:
         return default_signature
+
+
+@lru_cache(maxsize=None)
+def function_descriptive_name(fn, include_module=True):
+    fn_name = fn.__name__ if hasattr(fn, '__name__') else str(fn)
+    if not include_module:
+        return fn_name
+
+    module = inspect.getmodule(fn)
+    module_name = module.__name__ if module is not None else 'unknown'
+    return f'{module_name}.{fn_name}'
