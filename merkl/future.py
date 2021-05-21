@@ -5,10 +5,9 @@ from functools import cached_property
 import merkl.cache
 from merkl.io import write_track_file, write_future, FileRef, DirRef
 from merkl.utils import OPERATORS, nested_map, nested_collect
-from merkl.cache import get_modified_time
+from merkl.cache import get_modified_time, MEMORY_CACHE
 from merkl.exceptions import *
 from merkl.logger import logger, log_if_slow
-
 
 def map_to_hash(val):
     if isinstance(val, Future):
@@ -28,7 +27,8 @@ class Future:
     __slots__ = [
         'fn', 'fn_name', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
-        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures', '_parent_futures',
+        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
+        '_parent_futures', 'cache_in_memory',
     ]
 
     def __init__(
@@ -50,6 +50,7 @@ class Future:
         invocation_id=-1,
         batch_idx=None,
         cache_temporarily=False,
+        cache_in_memory=False,
     ):
         self.fn = fn
         if fn and hasattr(fn, '__name__'):
@@ -78,6 +79,7 @@ class Future:
         self.invocation_id = invocation_id
         self.batch_idx = batch_idx
         self.cache_temporarily = cache_temporarily
+        self.cache_in_memory = cache_in_memory
         self.outs_shared_futures = None
         self._parent_futures = None
 
@@ -136,12 +138,24 @@ class Future:
         return self._parent_futures
 
     def in_cache(self):
+        # First check the in-memory cache
+        if self.cache_in_memory and self.hash in MEMORY_CACHE:
+            return True
+
         if self.cache is None:
             return False
 
         return self.cache.has(self.hash)
 
     def get_cache(self):
+        # First check the in-memory cache
+        if self.cache_in_memory and self.hash in MEMORY_CACHE:
+            val = MEMORY_CACHE[self.hash]
+            # We don't want to store both unserialized and serialized value in the memory cache, so we need to serialize
+            # it if we need the serialized data. We only need this if we have to write it to file
+            serialized = self.serializer.dumps(val) if self.output_files is not None and len(self.output_files) > 0 else None
+            return val, serialized
+
         if self.cache is None:
             return None, None
 
@@ -182,6 +196,9 @@ class Future:
             self.write_output_files(specific_out, specific_out_bytes)
         else:
             specific_out, specific_out_bytes = self._eval()
+
+        if self.cache_in_memory:
+            MEMORY_CACHE[self.hash] = specific_out
 
         return specific_out
 

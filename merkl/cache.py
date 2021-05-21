@@ -7,6 +7,8 @@ import merkl
 from merkl.logger import logger
 from merkl.utils import collect_dag_futures, nested_collect
 
+MEMORY_CACHE = {}
+
 NO_CACHE = False
 
 BLOB_DB_SIZE_LIMIT_BYTES = 100000  # see link further down on page and blob sizes

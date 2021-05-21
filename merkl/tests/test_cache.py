@@ -6,7 +6,7 @@ from merkl import *
 from merkl.exceptions import *
 from merkl.tests import TestCaseWithMerklRepo
 from merkl.io import FileRef, DirRef
-from merkl.cache import get_cache_file_path, SqliteCache, BLOB_DB_SIZE_LIMIT_BYTES
+from merkl.cache import get_cache_file_path, SqliteCache, BLOB_DB_SIZE_LIMIT_BYTES, MEMORY_CACHE
 from merkl.utils import evaluate_futures
 from merkl.util_tasks import combine_file_refs
 
@@ -335,6 +335,17 @@ class TestCache(TestCaseWithMerklRepo):
         called = False
         out = my_pipeline()
         self.assertFalse(called)
+
+    def test_memory_caching(self):
+        @task(cache_in_memory=True)
+        def my_task(val):
+            return 2*val
+
+        out = my_task(2)
+        self.assertEqual(len(MEMORY_CACHE), 0)
+        out.eval()
+        self.assertEqual(len(MEMORY_CACHE), 1)
+        self.assertEqual(MEMORY_CACHE[out.hash], 4)
 
 
 if __name__ == '__main__':

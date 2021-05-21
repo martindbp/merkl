@@ -1,3 +1,5 @@
+Catch stdout/err as outputs of the fucntion
+
 Add command to print debug info about a task/pipeline, e.g. printing its deps, fn_code_hash. If we supply a task/pipeline with args and a hash to print, we can print the inputs, outputs and other info
 
 Catching KeyboardInterrupts doesn't work. How can be interrupt a loop and still continue?

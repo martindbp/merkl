@@ -162,7 +162,15 @@ def validate_resolve_deps(deps):
 
 
 @doublewrap
-def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCache, serializer=None, version=None):
+def batch(
+    batch_fn,
+    single_fn=None,
+    hash_mode=HashMode.FIND_DEPS,
+    cache=SqliteCache,
+    serializer=None,
+    version=None,
+    cache_in_memory=None,
+):
     if single_fn is None:
         raise BatchTaskError(f"'single_fn' has to be supplied")
 
@@ -219,6 +227,9 @@ def batch(batch_fn, single_fn=None, hash_mode=HashMode.FIND_DEPS, cache=SqliteCa
                 # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to
                 # Store the output temporarily
                 future._code_args_hash = batch_fn_code_hash
+
+                if cache_in_memory is not None:
+                    future.cache_in_memory = cache_in_memory
 
                 # Override cache and serializer
                 if cache:
@@ -281,6 +292,7 @@ def task(
     serializer=None,
     sig=None,
     version=None,
+    cache_in_memory=False,
 ):
     deps = deps or []
     sig = sig if sig else signature_with_default(f)
@@ -340,6 +352,7 @@ def task(
                 bound_args,
                 outs_shared_cache,
                 invocation_id=next_invocation_id,
+                cache_in_memory=cache_in_memory,
             )
             outputs[out_name] = future
             futures.append(future)
@@ -369,7 +382,7 @@ def task(
 
 
 @doublewrap
-def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
+def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, cache_in_memory=False):
     deps = deps or []
     sig = signature_with_default(f)
 
@@ -400,6 +413,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache):
             bound_args,
             is_pipeline=True,
             invocation_id=next_invocation_id,
+            cache_in_memory=cache_in_memory,
         )
 
         if pipeline_future.in_cache():
