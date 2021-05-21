@@ -6,6 +6,7 @@ import cProfile, pstats, io
 from pstats import SortKey
 from pathlib import Path
 
+import merkl
 from merkl.cli.init import InitAPI
 from merkl.cli.run import RunAPI
 from merkl.cli.dot import DotAPI
@@ -27,6 +28,8 @@ def main():
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument(
         '-v', '--verbose', action='store_true', help='Verbose output')
+    parser.add_argument(
+        '-l', '--long', action='store_true', help='Print long hashes for verbose output')
     parser.add_argument(
         '-p', '--profile', action='store_true', help='Profile the command')
 
@@ -78,9 +81,11 @@ def main():
     kwargs.pop('command')
     kwargs.pop('subcommand')
     verbose = kwargs.pop('verbose')
+    long_hashes = kwargs.pop('long')
     profile = kwargs.pop('profile')
     if verbose:
         logger.setLevel(logging.DEBUG)
+        merkl.logger.LONG = long_hashes
 
     if args.command == 'help':
         print('Use the --help option for help')

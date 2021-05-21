@@ -10,7 +10,7 @@ from merkl.io import write_track_file, write_future, FileRef, DirRef
 from merkl.utils import OPERATORS, nested_map, nested_collect, function_descriptive_name
 from merkl.cache import get_modified_time, MEMORY_CACHE
 from merkl.exceptions import *
-from merkl.logger import logger, log_if_slow
+from merkl.logger import logger, log_if_slow, short_hash
 
 def map_to_hash(val):
     if isinstance(val, Future):
@@ -203,7 +203,7 @@ class Future:
 
     def eval(self):
         if self.in_cache():
-            logger.debug(f'{function_descriptive_name(self.fn)}:{self.out_name} output was cached')
+            logger.debug(f'{function_descriptive_name(self.fn)}:{self.out_name} ({short_hash(self.hash)}) output was cached')
             specific_out, specific_out_bytes = self.get_cache()
             self.write_output_files(specific_out, specific_out_bytes)
         else:

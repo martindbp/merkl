@@ -4,7 +4,7 @@ import sqlite3
 from typing import NamedTuple
 
 import merkl
-from merkl.logger import logger
+from merkl.logger import logger, short_hash
 from merkl.utils import collect_dag_futures, nested_collect
 
 MEMORY_CACHE = {}
@@ -160,7 +160,7 @@ class SqliteCache:
 
     @classmethod
     def add(cls, hash, content_bytes=None, ref=None):
-        logger.debug(f'Caching {hash} ref={ref}, len(content_bytes)={len(content_bytes)}')
+        logger.debug(f'Caching {short_hash(hash)} ref={ref}, len(content_bytes)={len(content_bytes)}')
         ref_path = None if ref is None else str(ref)
         ref_is_dir = isinstance(ref, merkl.io.DirRef)
 
@@ -178,7 +178,7 @@ class SqliteCache:
 
     @classmethod
     def clear(cls, hash):
-        logger.debug(f'Clearing {hash}')
+        logger.debug(f'Clearing {short_hash(hash)}')
         cls.connect()
         result = list(cls.cursor.execute("SELECT ref_path, ref_is_dir, data FROM cache WHERE hash=?", (hash,)))
         if len(result) == 0:
@@ -225,7 +225,7 @@ class SqliteCache:
 
     @classmethod
     def track_file(cls, path, modified=None, merkl_hash=None, md5_hash=None):
-        logger.debug(f'Hashing file {path} modified={modified} merkl_hash={merkl_hash} md5_hash={md5_hash}')
+        logger.debug(f'Hashing file {path} modified={modified} merkl_hash={short_hash(merkl_hash)} md5_hash={short_hash(md5_hash)}')
         modified = modified or get_modified_time(path)
         cls.connect()
         cls.cursor.execute("INSERT INTO files VALUES (?, ?, ?, ?)", (path, modified, merkl_hash, md5_hash))

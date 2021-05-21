@@ -19,7 +19,7 @@ from merkl.utils import (
     signature_with_default,
     function_descriptive_name,
 )
-from merkl.logger import logger
+from merkl.logger import logger, short_hash
 from merkl.future import Future
 from merkl.exceptions import *
 from merkl.cache import SqliteCache
@@ -433,7 +433,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, cach
                     break
 
             if out_future_not_cached:
-                logger.debug(f'Pipeline output for {function_descriptive_name(f)} was cached, but output futures were not, so re-evaluating')
+                logger.debug(f'Pipeline output for {function_descriptive_name(f)} ({short_hash(pipeline_future.hash)}) was cached, but output futures were not, so re-evaluating')
                 pipeline_future.clear_cache()
                 outs = pipeline_future.eval()
 
