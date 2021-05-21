@@ -1,7 +1,10 @@
 import json
 import hashlib
 from collections import defaultdict
-from functools import cached_property
+from functools import cached_property, partial
+
+import dill
+
 import merkl.cache
 from merkl.io import write_track_file, write_future, FileRef, DirRef
 from merkl.utils import OPERATORS, nested_map, nested_collect
@@ -19,6 +22,11 @@ def map_future_to_value(val):
     if isinstance(val, Future):
         return val.eval()
     return val
+
+
+def _code_args_serializer_default(obj, fn_name):
+    logger.debug(f'Argument of type {type(obj)} for function {fn_name} is not JSON serializable, serializing with dill instead')
+    return str(dill.dumps(obj))
 
 
 FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'outs_shared_futures', '_parent_futures']
@@ -91,6 +99,8 @@ class Future:
         if not self.bound_args:
             return None
 
+        default = partial(_code_args_serializer_default, fn_name=self.fn.__name__)
+
         # Hash args, kwargs and code together
         hash_data = {
             'args': nested_map(self.bound_args.args, map_to_hash, convert_tuples_to_lists=True),
@@ -101,9 +111,9 @@ class Future:
         }
         m = hashlib.sha256()
         try:
-            m.update(bytes(json.dumps(hash_data, sort_keys=True), 'utf-8'))
-        except TypeError:
-            raise SerializationError(f'Value in args {hash_data} not JSON-serializable')
+            m.update(bytes(json.dumps(hash_data, sort_keys=True, default=default), 'utf-8'))
+        except (TypeError, dill.PicklingError):
+            raise SerializationError(f'Value in args {hash_data} not JSON or dill-serializable')
         self._code_args_hash = m.hexdigest()
         return self._code_args_hash
 

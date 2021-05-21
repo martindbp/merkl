@@ -487,5 +487,18 @@ class TestTask(TestCaseWithMerklRepo):
 
         self.assertEqual(my_version_task().fn_code_hash, 'test_task.my_version_task-0.1')
 
+    def test_non_json_serializable_args(self):
+        @task
+        def my_task(arg):
+            return arg
+
+        from uuid import uuid1
+        import json
+        with self.assertRaises(TypeError):
+            json.dumps(uuid1())
+
+        out = my_task(uuid1())
+        out.eval()
+
 if __name__ == '__main__':
     unittest.main()
