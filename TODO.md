@@ -1,3 +1,51 @@
+Seems like some hash file is being removed on "clear" but on the database record
+
+
+Make more useful/friendly error messages, e.g. for:
+Traceback (most recent call last):
+  File "/home/marpett/envs/algernon/bin/merkl", line 33, in <module>
+    sys.exit(load_entry_point('merkl==0.1', 'console_scripts', 'merkl')())
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/cli/cli.py", line 112, in main
+    route(**kwargs)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/cli/run.py", line 30, in run
+    clize.run(function, args=['merkl-run', *self.unknown_args], exit=False)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/sigtools/modifiers.py", line 158, in __call__
+    return self.func(*args, **kwargs)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/clize-4.1.1-py3.9.egg/clize/runner.py", line 363, in run
+    ret = cli(*args)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/clize-4.1.1-py3.9.egg/clize/runner.py", line 220, in __call__
+    return func(*posargs, **kwargs)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/cli/run.py", line 13, in _wrap
+    outs = f(*args, **kwargs)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/task.py", line 443, in wrap
+    outs = pipeline_future.eval()
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/future.py", line 211, in eval
+    specific_out, specific_out_bytes = self._eval()
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/future.py", line 230, in _eval
+    outputs = self.fn(*evaluated_args, **evaluated_kwargs)
+  File "/home/marpett/Projects/algernon.ai/train_predict.py", line 16, in train_pipeline
+    images_dir, masks_dir = generate_dataset.pipeline(20000, 512, 80, seed=42)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/task.py", line 443, in wrap
+    outs = pipeline_future.eval()
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/future.py", line 211, in eval
+    specific_out, specific_out_bytes = self._eval()
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/future.py", line 230, in _eval
+    outputs = self.fn(*evaluated_args, **evaluated_kwargs)
+  File "/home/marpett/Projects/algernon.ai/generate_dataset.py", line 197, in pipeline
+    text_image_paths = generate_text_images(text_image_parameters)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/task.py", line 215, in wrap
+    out = single_fn(*args_tuple)
+  File "/home/marpett/envs/algernon/lib/python3.9/site-packages/merkl-0.1-py3.9.egg/merkl/task.py", line 332, in wrap
+    bound_args = sig.bind(*args, **kwargs)
+  File "/usr/lib/python3.9/inspect.py", line 3062, in bind
+    return self._bind(args, kwargs)
+  File "/usr/lib/python3.9/inspect.py", line 2983, in _bind
+    raise TypeError('too many positional arguments') from None
+TypeError: too many positional arguments
+
+
+Need to make caching atomic
+
 Catch stdout/err as outputs of the fucntion
 
 Add command to print debug info about a task/pipeline, e.g. printing its deps, fn_code_hash. If we supply a task/pipeline with args and a hash to print, we can print the inputs, outputs and other info

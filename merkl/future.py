@@ -7,7 +7,7 @@ import dill
 
 import merkl.cache
 from merkl.io import write_track_file, write_future, FileRef, DirRef
-from merkl.utils import OPERATORS, nested_map, nested_collect, function_descriptive_name
+from merkl.utils import OPERATORS, nested_map, nested_collect, function_descriptive_name, DelayedKeyboardInterrupt
 from merkl.cache import get_modified_time, MEMORY_CACHE
 from merkl.exceptions import *
 from merkl.logger import logger, log_if_slow, short_hash
@@ -279,7 +279,13 @@ class Future:
         if not self.is_input:  # Futures from io should not be cached (but is read from cache)
             if self.cache is not None:
                 specific_out_bytes = self.serializer.dumps(specific_out)
-                self.cache.add(self.hash, specific_out_bytes, ref=(specific_out if specific_out_is_ref else None))
+                with DelayedKeyboardInterrupt():
+                    # Cache needs to be fully done, otherwise we might have added data to sqlite but not file
+                    self.cache.add(
+                        self.hash,
+                        specific_out_bytes,
+                        ref=(specific_out if specific_out_is_ref else None)
+                    )
 
                 if called_function:  # Make sure we only clear parent futures once for all the output futures
                     for parent_future in self.parent_futures:

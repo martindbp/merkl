@@ -214,6 +214,7 @@ class SqliteCache:
 
         if len(hashes_with_files) > 0:
             logger.warning(f'Deleting {len(hashes_with_files)} files or directories from cache')
+
         for hash, ref_path, ref_is_dir in hashes_with_files:
             if ref_path is not None:
                 if ref_is_dir:
