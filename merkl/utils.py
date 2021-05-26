@@ -4,6 +4,7 @@ import json
 import inspect
 import hashlib
 import textwrap
+import signal
 from functools import wraps, lru_cache
 from inspect import isfunction, ismodule, getmodule
 from typing import NamedTuple
@@ -245,3 +246,31 @@ def function_descriptive_name(fn, include_module=True):
     module = inspect.getmodule(fn)
     module_name = module.__name__ if module is not None else 'unknown'
     return f'{module_name}.{fn_name}'
+
+
+class DelayedKeyboardInterrupt():
+    def __enter__(self):
+        self.signal_received = False
+        self.old_handler = signal.signal(signal.SIGINT, self.handler)
+
+    def handler(self, sig, frame):
+        self.signal_received = (sig, frame)
+        logger.debug('SIGINT received. Delaying KeyboardInterrupt.')
+
+    def __exit__(self, type, value, traceback):
+        signal.signal(signal.SIGINT, self.old_handler)
+        if self.signal_received:
+            self.old_handler(*self.signal_received)
+
+
+eval_immediately = False
+
+class Eval():
+    def __enter__(self, *args, **kwargs):
+        global eval_immediately
+        self.prev_val = eval_immediately
+        eval_immediately = True
+
+    def __exit__(self, *args, **kwargs):
+        global eval_immediately
+        eval_immediately = self.prev_val

@@ -162,6 +162,12 @@ def validate_resolve_deps(deps):
     return resolved_deps + extra_deps
 
 
+def eval_futures(obj):
+    if isinstance(obj, Future):
+        return obj.eval()
+    return obj
+
+
 @doublewrap
 def batch(
     batch_fn,
@@ -274,6 +280,9 @@ def batch(
         if len(outs) > 1000:
             logger.debug(f'Batch task {batch_fn} has many outs ({len(outs)}), beware that hashing this many outs as args to another task may be slow')
 
+        if merkl.utils.eval_immediately:
+            outs = nested_map(outs, eval_futures)
+
         return outs
 
     wrap.is_merkl = True
@@ -373,6 +382,9 @@ def task(
         if len(outputs) > 1000:
             logger.debug(f'Task {f} has many outs ({len(outputs)}), beware that hashing this many outs as args to another task may be slow')
 
+        if merkl.utils.eval_immediately:
+            outputs = nested_map(outputs, eval_futures)
+
         return outputs
 
     wrap.is_merkl = True
@@ -447,6 +459,9 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, cach
 
         if len(out_futures) > 1000:
             logger.debug(f'Pipeline {f} has many output futures ({len(out_futures)}), beware that hashing this many futures as args to another task may be slow')
+
+        if merkl.utils.eval_immediately:
+            outs = nested_map(outs, eval_futures)
 
         return outs
 

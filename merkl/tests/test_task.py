@@ -10,7 +10,7 @@ from merkl.tests import TestCaseWithMerklRepo
 from merkl.future import Future
 from merkl.task import task, batch, pipeline, HashMode
 from merkl.exceptions import *
-from merkl.utils import get_hash_memory_optimized
+from merkl.utils import get_hash_memory_optimized, Eval
 from merkl.io import FileRef, DirRef
 
 
@@ -499,6 +499,17 @@ class TestTask(TestCaseWithMerklRepo):
 
         out = my_task(uuid1())
         out.eval()
+
+    def test_eval_context_manager(self):
+        @task
+        def my_task(arg):
+            return 2*arg, 3*arg
+
+        with Eval():
+            out1, out2 = my_task(3)
+
+            self.assertEqual(out1, 6)
+            self.assertEqual(out2, 9)
 
 if __name__ == '__main__':
     unittest.main()
