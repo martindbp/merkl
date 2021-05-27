@@ -1,3 +1,5 @@
+Strip comments and whitespace from code before hashing
+
 Seems like some hash file is being removed on "clear" but on the database record
 
 
@@ -42,9 +44,6 @@ Traceback (most recent call last):
   File "/usr/lib/python3.9/inspect.py", line 2983, in _bind
     raise TypeError('too many positional arguments') from None
 TypeError: too many positional arguments
-
-
-Need to make caching atomic
 
 Catch stdout/err as outputs of the fucntion
 

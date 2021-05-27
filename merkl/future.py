@@ -203,7 +203,12 @@ class Future:
 
     def eval(self):
         if self.in_cache():
-            logger.debug(f'{function_descriptive_name(self.fn)}:{self.out_name} ({short_hash(self.hash)}) output was cached')
+            if isinstance(self.out_name, int):
+                if self.out_name <= 5:
+                    logger.debug(f'{function_descriptive_name(self.fn)}:{self.out_name} ({short_hash(self.hash)}) output was cached')
+                    if self.out_name == 5:
+                        logger.debug(f'And {self.outs - self.out_name} more...')
+
             specific_out, specific_out_bytes = self.get_cache()
             self.write_output_files(specific_out, specific_out_bytes)
         else:
