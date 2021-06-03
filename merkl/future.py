@@ -284,13 +284,14 @@ class Future:
         if not self.is_input:  # Futures from io should not be cached (but is read from cache)
             if self.cache is not None:
                 specific_out_bytes = self.serializer.dumps(specific_out)
-                with DelayedKeyboardInterrupt():
-                    # Cache needs to be fully done, otherwise we might have added data to sqlite but not file
-                    self.cache.add(
-                        self.hash,
-                        specific_out_bytes,
-                        ref=(specific_out if specific_out_is_ref else None)
-                    )
+                if not self.cache.has(self.hash):  # gotta check again
+                    with DelayedKeyboardInterrupt():
+                        # Cache needs to be fully done, otherwise we might have added data to sqlite but not file
+                        self.cache.add(
+                            self.hash,
+                            specific_out_bytes,
+                            ref=(specific_out if specific_out_is_ref else None)
+                        )
 
                 if called_function:  # Make sure we only clear parent futures once for all the output futures
                     for parent_future in self.parent_futures:

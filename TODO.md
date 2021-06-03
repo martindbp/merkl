@@ -1,7 +1,15 @@
-Strip comments and whitespace from code before hashing
+Add ignore_args
 
-Seems like some hash file is being removed on "clear" but on the database record
+Can we create Futures on the fly from a generator? MerklList, MerklDict
 
+When a task has a lot of outputs, like a corpus (list of sentences), then it would be much better to cache outputs together.
+
+Write <file>.merkl file when piping to file
+
+Strip comments and whitespace from code before hashing? Maybe not, you might want to add some whitespace to get a different hash
+
+Seems like some hash file is being removed on "clear" but not the database record
+    It removes stuff that's not part of the pipeline
 
 Make more useful/friendly error messages, e.g. for:
 Traceback (most recent call last):
@@ -45,7 +53,7 @@ Traceback (most recent call last):
     raise TypeError('too many positional arguments') from None
 TypeError: too many positional arguments
 
-Catch stdout/err as outputs of the fucntion
+Catch stdout/err as outputs of the function
 
 Add command to print debug info about a task/pipeline, e.g. printing its deps, fn_code_hash. If we supply a task/pipeline with args and a hash to print, we can print the inputs, outputs and other info
 
@@ -56,8 +64,6 @@ Serializers for args?
 Make some kind of BaseCache that can be inherited from
 
 Allow files to be seperately tracked if a function returns a single DirOut, use out keys as filenames
-
-Add a "code_version" parameter to task which supersedes any code hash, but not deps
 
 Add type hints / mypy
     Attach a type hint to Future, check for equality when passing in to other tasks
