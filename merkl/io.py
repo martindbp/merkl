@@ -11,6 +11,7 @@ from tempfile import mkdtemp
 import merkl
 from merkl.utils import get_hash_memory_optimized
 from merkl.exceptions import SerializationError
+from merkl.logger import logger
 
 
 cwd = ''
@@ -78,6 +79,7 @@ def fetch_or_compute_dir_md5(files, cache=merkl.cache.SqliteCache, store=True):
 
 
 def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCache):
+    logger.debug(f'Writing to path: {path}')
     if isinstance(content_bytes, FileRef):
         shutil.copy(content_bytes, path)
     elif isinstance(content_bytes, DirRef):
