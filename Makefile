@@ -1,5 +1,5 @@
 install:
-	rm -r build
+	rm -rf build
 	python setup.py install
 
 test:
