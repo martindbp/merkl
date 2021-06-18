@@ -335,6 +335,9 @@ def task(
 
     deps = validate_resolve_deps(deps)
 
+    deps.append(('function_code_hash', fn_code_hash))
+    deps.append(('function_name', function_descriptive_name(f, include_module=False)))
+
     @forwards_to_function(f)
     def wrap(*args, **kwargs):
         global next_invocation_id

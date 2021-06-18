@@ -257,7 +257,7 @@ class TestTask(TestCaseWithMerklRepo):
         self.assertEqual(len(set(hashes[3:])), 1)
 
         deps = [name for (name, dep) in my_task.deps]
-        self.assertEqual(len(deps), 2)
+        self.assertEqual(len(deps), 2+2)  # +2 is function name and code hash
         self.assertTrue('my_global_variable' in deps)
         self.assertTrue('_my_fn' in deps)
 
@@ -287,7 +287,7 @@ class TestTask(TestCaseWithMerklRepo):
         def my_pipeline():
             return my_dep_task_for_pipeline()
 
-        self.assertEqual(len(my_pipeline.deps), 2)
+        self.assertEqual(len(my_pipeline.deps), 2+2)  # +2 is function name and code hash
         self.assertEqual(my_pipeline.deps[1], 'test_dep')
 
     def test_future_operator_access(self):

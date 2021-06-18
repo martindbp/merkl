@@ -103,8 +103,6 @@ class Future:
         hash_data = {
             'args': nested_map(self.bound_args.args, map_to_hash, convert_tuples_to_lists=True),
             'kwargs': nested_map(self.bound_args.kwargs, map_to_hash, convert_tuples_to_lists=True),
-            'function_name': function_descriptive_name(self.fn, include_module=False),
-            'function_code_hash': self.fn_code_hash,
             'function_deps': self.deps or [],
         }
         m = hashlib.sha256()
