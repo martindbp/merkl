@@ -99,7 +99,7 @@ class Future:
         if not self.bound_args:
             return None
 
-        default = partial(_code_args_serializer_default, fn_name=function_descriptive_name(self.fn))
+        default = partial(_code_args_serializer_default, fn_name=self.fn_descriptive_name)
 
         arguments = self.bound_args.arguments
         if self.ignore_args is not None:
@@ -208,7 +208,7 @@ class Future:
         if self.in_cache():
             if isinstance(self.out_name, int):
                 if self.out_name <= 5:
-                    logger.debug(f'{function_descriptive_name(self.fn)}:{self.out_name} ({short_hash(self.hash)}) output was cached')
+                    logger.debug(f'{self.fn_descriptive_name}:{self.out_name} ({short_hash(self.hash)}) output was cached')
                     if self.out_name == 5:
                         logger.debug(f'And {self.outs - self.out_name} more...')
 
@@ -232,7 +232,7 @@ class Future:
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
-            logger.debug(f'Calling {function_descriptive_name(self.fn)} (out_name={self.out_name})')
+            logger.debug(f'Calling {self.fn_descriptive_name} (out_name={self.out_name})')
             called_function = True
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
 
@@ -305,6 +305,10 @@ class Future:
 
         return specific_out, specific_out_bytes
 
+    @property
+    def fn_descriptive_name(self):
+        return function_descriptive_name(self.fn)
+
     def __repr__(self):
         return f'<Future: {self.hash[:8]}>'
 
@@ -312,7 +316,7 @@ class Future:
         # NOTE: a future is only pickled/serialized when it is returned by a pipeline 
 
         if self.cache is None:
-            raise SerializationError(f'Serializing {repr(self)} ({function_descriptive_name(self.fn)}: {self.out_name}) but there is no cache set')
+            raise SerializationError(f'Serializing {repr(self)} ({self.fn_descriptive_name}: {self.out_name}) but there is no cache set')
 
         # Trigger calculation of _hash and _code_args_hash that we want to serialize
         self.hash

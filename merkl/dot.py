@@ -2,6 +2,7 @@ import merkl.io
 from merkl.future import Future
 from merkl.utils import nested_collect
 from merkl.exceptions import FutureAccessError
+from merkl import logger
 
 
 MAX_LEN = 40
@@ -15,14 +16,17 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
         node_future = future.parent_pipeline_future if is_cached_pipeline else future
         out_name = future.batch_idx if future.batch_idx is not None else future.out_name
 
-        node_id = f'{out_name}_{node_future.hash[:6]}_{node_future.invocation_id}'
+        node_future_hash = node_future.hash
+        if not logger.LONG:
+            node_future_hash = node_future_hash[:6]
+        node_id = f'{out_name}_{node_future_hash}_{node_future.invocation_id}'
         code_args_hash = None
         if node_future.code_args_hash:
             code_args_hash = f'{node_future.code_args_hash}_{node_future.invocation_id}'
         if not future.is_input and code_args_hash not in printed:
-            fn_name = f'{future.fn_name}: {future.fn_code_hash[:4]}'
+            fn_name = f'{future.fn_descriptive_name}: {future.fn_code_hash[:4]}'
             if node_future.batch_idx is not None:
-                fn_name = f'{future.fn_name} (batch): {future.fn_code_hash[:4]}'
+                fn_name = f'{future.fn_descriptive_name} (batch): {future.fn_code_hash[:4]}'
             if node_future.fn_code_hash not in printed:
                 # Only print a function's deps once, in case of multiple invocations (list may be long)
                 clamped = len(future.deps) > MAX_DEPS + 1
