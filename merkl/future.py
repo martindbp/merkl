@@ -351,6 +351,9 @@ class Future:
         return int(self.hash, 16)
 
     def __eq__(self, other):
+        if not hasattr(other, 'hash'):
+            return False
+
         return self.hash == other.hash
 
     def deny_access(self, *args, **kwargs):

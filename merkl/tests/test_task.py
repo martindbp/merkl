@@ -523,6 +523,19 @@ class TestTask(TestCaseWithMerklRepo):
         self.assertEqual(hash1, hash2)
         self.assertEqual(hash2, hash3)
 
+    def test_nested_task(self):
+        # Just to make sure this works as expected
+
+        @task
+        def inner_task(arg):
+            return 2*arg
+
+        @task
+        def outer_task(arg):
+            return inner_task(arg).eval()
+
+        self.assertEqual(outer_task(3).eval(), 6)
+
 
 if __name__ == '__main__':
     unittest.main()

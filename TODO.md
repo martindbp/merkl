@@ -1,3 +1,7 @@
+Rename dot command -> dag, options for outputing json or dot
+
+Migrate command, that takes two dag files in json format and migrates the hashes
+
 Document ignore_args readme
 
 Can we create Futures on the fly from a generator? MerklList, MerklDict
