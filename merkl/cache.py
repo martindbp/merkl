@@ -160,11 +160,12 @@ class SqliteCache:
 
     @classmethod
     def add(cls, hash, content_bytes=None, ref=None):
-        logger.debug(f'Caching {short_hash(hash)} ref={ref}, len(content_bytes)={len(content_bytes)}')
+        content_len = len(content_bytes) if content_bytes is not None else 0
+        logger.debug(f'Caching {short_hash(hash)} ref={ref}, len(content_bytes)={content_len}')
         ref_path = None if ref is None else str(ref)
         ref_is_dir = isinstance(ref, merkl.io.DirRef)
 
-        if ref is None and len(content_bytes) > BLOB_DB_SIZE_LIMIT_BYTES:
+        if ref is None and content_len > BLOB_DB_SIZE_LIMIT_BYTES:
             # Faster to store data in a file
             cache_file_path = get_cache_file_path(hash, makedirs=True)
             with open(cache_file_path, 'wb') as f:
