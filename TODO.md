@@ -1,4 +1,4 @@
-Add ignore_args
+Document ignore_args readme
 
 Can we create Futures on the fly from a generator? MerklList, MerklDict
 

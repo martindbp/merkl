@@ -177,6 +177,7 @@ def batch(
     serializer=None,
     version=None,
     cache_in_memory=None,
+    ignore_args=None,
 ):
     if single_fn is None:
         raise BatchTaskError(f"'single_fn' has to be supplied")
@@ -223,6 +224,9 @@ def batch(
             any_out_not_cached = False
             cached_futures = []
             for future in nested_collect(out, lambda x: isinstance(x, Future)):
+                if ignore_args is not None:
+                    future.ignore_args = ignore_args  # must set this before calculating hash
+
                 # Set the invocation id to the same for all futures
                 future.invocation_id = invocation_id
                 # Trigger calculation of the hash, which will be cached
@@ -238,7 +242,7 @@ def batch(
                 if cache_in_memory is not None:
                     future.cache_in_memory = cache_in_memory
 
-                # Override cache and serializer
+                # Override optional parameters
                 if cache:
                     future.cache = cache if not merkl.cache.NO_CACHE else None
                 if serializer:
@@ -304,8 +308,10 @@ def task(
     sig=None,
     version=None,
     cache_in_memory=False,
+    ignore_args=None,
 ):
     deps = deps or []
+    ignore_args = ignore_args or []
     sig = sig if sig else signature_with_default(f)
 
     return_type = None
@@ -367,6 +373,7 @@ def task(
                 outs_shared_cache,
                 invocation_id=next_invocation_id,
                 cache_in_memory=cache_in_memory,
+                ignore_args=ignore_args,
             )
             outputs[out_name] = future
             futures.append(future)
@@ -399,8 +406,9 @@ def task(
 
 
 @doublewrap
-def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, cache_in_memory=False):
+def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, cache_in_memory=False, ignore_args=None):
     deps = deps or []
+    ignore_args = ignore_args or []
     sig = signature_with_default(f)
 
     if not isinstance(hash_mode, HashMode):
@@ -431,6 +439,7 @@ def pipeline(f, hash_mode=HashMode.FIND_DEPS, deps=None, cache=SqliteCache, cach
             is_pipeline=True,
             invocation_id=next_invocation_id,
             cache_in_memory=cache_in_memory,
+            ignore_args=ignore_args,
         )
 
         if pipeline_future.in_cache():

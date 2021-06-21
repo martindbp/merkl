@@ -36,7 +36,7 @@ class Future:
         'fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
-        '_parent_futures', 'cache_in_memory',
+        '_parent_futures', 'cache_in_memory', 'ignore_args',
     ]
 
     def __init__(
@@ -59,6 +59,7 @@ class Future:
         batch_idx=None,
         cache_temporarily=False,
         cache_in_memory=False,
+        ignore_args=None,
     ):
         self.fn = fn
         self.fn_code_hash = fn_code_hash
@@ -86,6 +87,7 @@ class Future:
         self.batch_idx = batch_idx
         self.cache_temporarily = cache_temporarily
         self.cache_in_memory = cache_in_memory
+        self.ignore_args = ignore_args
         self.outs_shared_futures = None
         self._parent_futures = None
 
@@ -99,12 +101,15 @@ class Future:
 
         default = partial(_code_args_serializer_default, fn_name=function_descriptive_name(self.fn))
 
-        # Hash args, kwargs and code together
+        arguments = self.bound_args.arguments
+        if self.ignore_args is not None:
+            arguments = {name: arg for name, arg in arguments.items() if name not in self.ignore_args}
+
         hash_data = {
-            'args': nested_map(self.bound_args.args, map_to_hash, convert_tuples_to_lists=True),
-            'kwargs': nested_map(self.bound_args.kwargs, map_to_hash, convert_tuples_to_lists=True),
+            'arguments': nested_map(arguments, map_to_hash, convert_tuples_to_lists=True),
             'function_deps': self.deps or [],
         }
+
         m = hashlib.sha256()
         try:
             m.update(bytes(json.dumps(hash_data, sort_keys=True, default=default), 'utf-8'))

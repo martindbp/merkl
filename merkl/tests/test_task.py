@@ -511,5 +511,18 @@ class TestTask(TestCaseWithMerklRepo):
             self.assertEqual(out1, 6)
             self.assertEqual(out2, 9)
 
+    def test_ignore_args(self):
+        @task(ignore_args=['test2', 'kwargs'])
+        def my_task(test, test2, *args, arg=3, **kwargs):
+            return arg
+
+        hash1 = my_task(1, 2, 3, arg=5, barf=6).hash
+        hash2 = my_task(1, 3, 3, arg=5, barf=6).hash
+        hash3 = my_task(1, 3, 3, arg=5, barf='hello').hash
+
+        self.assertEqual(hash1, hash2)
+        self.assertEqual(hash2, hash3)
+
+
 if __name__ == '__main__':
     unittest.main()
