@@ -8,8 +8,6 @@ Can we create Futures on the fly from a generator? MerklList, MerklDict
 
 When a task has a lot of outputs, like a corpus (list of sentences), then it would be much better to cache outputs together.
 
-Write <file>.merkl file when piping to file
-
 Strip comments and whitespace from code before hashing? Maybe not, you might want to add some whitespace to get a different hash
 
 Seems like some hash file is being removed on "clear" but not the database record

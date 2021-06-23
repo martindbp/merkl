@@ -189,7 +189,7 @@ class Future:
         self.cache.clear(self.hash)
 
     def write_output_files(self, specific_out, specific_out_bytes):
-        for path in self.output_files or []:
+        for path, write_merkl_file in self.output_files or []:
             # Check if output file is up to date
             modified = get_modified_time(path)
             up_to_date = False
@@ -202,7 +202,7 @@ class Future:
                 if specific_out_bytes is None:
                     specific_out_bytes = log_if_slow(lambda: self.serializer.dumps(specific_out), f'Serializing {sel.fn} out {self.hash} slow')
 
-                write_track_file(path, specific_out_bytes, self.hash, self.cache)
+                write_track_file(path, specific_out_bytes, self.hash, self.cache, write_merkl_file)
 
     def eval(self):
         if self.in_cache():
@@ -346,6 +346,12 @@ class Future:
             return NotImplemented
 
         return write_future(self, path)
+
+    def __rshift__(self, path):
+        if not isinstance(path, str):
+            return NotImplemented
+
+        return write_future(self, path, write_merkl_file=True)
 
     def __hash__(self):
         return int(self.hash, 16)

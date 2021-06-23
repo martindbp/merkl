@@ -81,6 +81,25 @@ class TestIO(TestCaseWithMerklRepo):
         with self.assertRaises(TypeError):
             out = task1() > 3
 
+    def test_write_future_with_merkl_file(self):
+        @task
+        def task1():
+            return b'some data2'
+
+        out = task1()
+        out = out >> self.tmp_file
+        out.eval()
+
+        with open(self.tmp_file, 'rb') as f:
+            self.assertEqual(f.read(), pickle.dumps(b'some data2'))
+
+        with open(self.tmp_file + '.merkl', 'r') as f:
+            self.assertEqual(json.loads(f.read())['merkl_hash'], out.hash)
+
+        # Make types other than strings raises errors
+        with self.assertRaises(TypeError):
+            out = task1() >> 3
+
     def test_path_future(self):
         @task
         def task1(path):

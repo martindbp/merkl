@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 import shutil
 import hashlib
 import collections
@@ -51,10 +52,10 @@ def read_future(path, flags=''):
     return merkl.future.Future(f, hash=md5_hash, meta=path, is_input=True)
 
 
-def write_future(future, path):
+def write_future(future, path, write_merkl_file=False):
     if future.output_files is None:
         future.output_files = []
-    future.output_files.append(path)
+    future.output_files.append((path, write_merkl_file))
     return future
 
 
@@ -78,7 +79,7 @@ def fetch_or_compute_dir_md5(files, cache=merkl.cache.SqliteCache, store=True):
     return h.hexdigest()
 
 
-def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCache):
+def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCache, write_merkl_file=False):
     logger.debug(f'Writing to path: {path}')
     if isinstance(content_bytes, FileRef):
         shutil.copy(content_bytes, path)
@@ -91,6 +92,11 @@ def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCa
     # NOTE: we could get the md5 hash and store it, but not strictly necessary for
     # files that merkl has "created". The md5 is necessary though for files _read_ by merkl but produced elsewhere
     cache.track_file(path, merkl_hash=merkl_hash)
+    if write_merkl_file:
+        with open(path + '.merkl', 'w') as f:
+            f.write(json.dumps({
+                'merkl_hash': merkl_hash,
+            }))
 
 
 class FileRef(str):
