@@ -11,6 +11,7 @@ import merkl.io
 from merkl import *
 from merkl.tests import TestCaseWithMerklRepo
 from merkl.utils import get_hash_memory_optimized
+from merkl.io import migrate_output_files
 
 
 class TestIO(TestCaseWithMerklRepo):
@@ -27,6 +28,11 @@ class TestIO(TestCaseWithMerklRepo):
 
     def tearDown(self):
         super().tearDown()
+        for path in [self.tmp_file, self.tmp_file + '.merkl', self.tmp_file2, self.tmp_file2 + '.merkl']:
+            try:
+                os.remove(path)
+            except:
+                pass
 
     def test_read_future(self):
         with self.assertRaises(FileNotFoundError):
@@ -117,6 +123,35 @@ class TestIO(TestCaseWithMerklRepo):
         fpath3 = path_future(self.tmp_file)
 
         self.assertNotEqual(fpath3.hash, fpath2.hash)
+
+
+    def test_output_file_migration(self):
+        @task
+        def task1(value):
+            return f'some data {value}'
+
+        def pipeline(value):
+            out = task1(value)
+            out = out >> self.tmp_file
+            return out
+
+        out = pipeline(1).eval()
+
+        with open(self.tmp_file + '.merkl', 'r') as f:
+            hash1 = json.loads(f.read())['merkl_hash']
+
+        out = pipeline(2)
+        self.assertFalse(out.in_cache())
+
+        migrate_output_files(out)
+
+        with open(self.tmp_file + '.merkl', 'r') as f:
+            hash2 = json.loads(f.read())['merkl_hash']
+
+        self.assertNotEqual(hash1, hash2)
+
+        # Now test that the new migrated out file means that out is in cache
+        self.assertTrue(out.in_cache())
 
 
 if __name__ == '__main__':

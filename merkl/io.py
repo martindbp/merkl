@@ -10,7 +10,7 @@ from datetime import datetime
 from tempfile import mkdtemp
 
 import merkl
-from merkl.utils import get_hash_memory_optimized
+from merkl.utils import get_hash_memory_optimized, nested_collect, collect_dag_futures
 from merkl.exceptions import SerializationError
 from merkl.logger import logger
 
@@ -79,6 +79,21 @@ def fetch_or_compute_dir_md5(files, cache=merkl.cache.SqliteCache, store=True):
     return h.hexdigest()
 
 
+def _write_merkl_file(path, merkl_hash):
+    with open(path + '.merkl', 'w') as f:
+        f.write(json.dumps({
+            'merkl_hash': merkl_hash,
+        }))
+
+
+def get_merkl_file_hash(path):
+    if not os.path.exists(path + '.merkl'):
+        return None
+
+    with open(path + '.merkl', 'r') as f:
+        return json.loads(f.read())['merkl_hash']
+
+
 def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCache, write_merkl_file=False):
     logger.debug(f'Writing to path: {path}')
     if isinstance(content_bytes, FileRef):
@@ -93,10 +108,24 @@ def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCa
     # files that merkl has "created". The md5 is necessary though for files _read_ by merkl but produced elsewhere
     cache.track_file(path, merkl_hash=merkl_hash)
     if write_merkl_file:
-        with open(path + '.merkl', 'w') as f:
-            f.write(json.dumps({
-                'merkl_hash': merkl_hash,
-            }))
+        _write_merkl_file(path, merkl_hash)
+
+
+def migrate_output_files(outs):
+    """ Migrates the .merkl file hash to the new one, if .merkl file exists for output file """
+    futures = nested_collect(outs, lambda x: isinstance(x, merkl.future.Future))
+
+    dag_futures = set()
+    for future in futures:
+        collect_dag_futures(future, dag_futures, include_parent_pipelines=True)
+
+    for future in dag_futures:
+        for output_file, write_merkl_file in future.output_files or []:
+            if not write_merkl_file:
+                continue
+
+            logger.info(f'Migrating {output_file} to {future.hash}')
+            _write_merkl_file(output_file, future.hash)
 
 
 class FileRef(str):

@@ -6,11 +6,11 @@ from functools import cached_property, partial
 import dill
 
 import merkl.cache
-from merkl.io import write_track_file, write_future, FileRef, DirRef
-from merkl.utils import OPERATORS, nested_map, nested_collect, function_descriptive_name, DelayedKeyboardInterrupt
-from merkl.cache import get_modified_time, MEMORY_CACHE
 from merkl.exceptions import *
+from merkl.cache import get_modified_time, MEMORY_CACHE
 from merkl.logger import logger, log_if_slow, short_hash
+from merkl.io import write_track_file, write_future, FileRef, DirRef, get_merkl_file_hash
+from merkl.utils import OPERATORS, nested_map, nested_collect, function_descriptive_name, DelayedKeyboardInterrupt
 
 def map_to_hash(val):
     if isinstance(val, Future):
@@ -159,6 +159,14 @@ class Future:
         if self.cache_in_memory and self.hash in MEMORY_CACHE:
             return True
 
+        for output_file, write_merkl_file in self.output_files or []:
+            if not write_merkl_file:
+                continue
+
+            output_file_merkl_hash = get_merkl_file_hash(output_file)
+            if output_file_merkl_hash == self.hash:
+                return True
+
         if self.cache is None:
             return False
 
@@ -184,6 +192,20 @@ class Future:
 
             deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn} out {self.hash} slow')
             return deserialized, val
+
+        # Not in regular cache, so check the output files:
+        for output_file, write_merkl_file in self.output_files or []:
+            if not write_merkl_file:
+                continue
+
+            output_file_merkl_hash = get_merkl_file_hash(output_file)
+            if output_file_merkl_hash == self.hash:
+                with open(output_file, 'rb') as f:
+                    val = f.read()
+
+                deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn} out {self.hash} slow')
+                return deserialized, val
+
 
     def clear_cache(self):
         if self.cache_in_memory and self.hash in MEMORY_CACHE:

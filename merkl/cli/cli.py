@@ -9,6 +9,7 @@ from pathlib import Path
 import merkl
 from merkl.cli.init import InitAPI
 from merkl.cli.run import RunAPI
+from merkl.cli.migrate import MigrateAPI
 from merkl.cli.dot import DotAPI
 from merkl.cli.clear import ClearAPI
 from merkl.logger import logger
@@ -19,6 +20,7 @@ class MerkLAPI:
     run = RunAPI()
     dot = DotAPI()
     clear = ClearAPI()
+    migrate = MigrateAPI()
 
 
 def main():
@@ -72,6 +74,12 @@ def main():
     clear_parser.add_argument('-k', '--keep', action='store_true', help='Keep reachable all values from <module_function>')
     clear_parser.add_argument('--keep-outs', action='store_true', help='Keep only final <module_function> outputs')
     clear_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
+
+    # ------------- MIGRATE --------------
+    migrate_parser = subparsers.add_parser(
+        'migrate', description='Migrate output files for a pipeline')
+    migrate_parser.set_defaults(command='migrate', subcommand='migrate')
+    migrate_parser.add_argument('module_function', help='Module function to migrate (<module>.<function>)')
 
 
     args, unknown_args = parser.parse_known_args()
