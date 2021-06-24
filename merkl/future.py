@@ -24,6 +24,12 @@ def map_future_to_value(val):
     return val
 
 
+def to_bytes_maybe(bytes_or_str):
+    if isinstance(bytes_or_str, str):
+        return bytes(bytes_or_str, 'utf-8')
+    return bytes_or_str
+
+
 def _code_args_serializer_default(obj, fn_name):
     logger.debug(f'Argument of type {type(obj)} for function {fn_name} is not JSON serializable, serializing with dill instead')
     return str(dill.dumps(obj))
@@ -164,7 +170,7 @@ class Future:
             val = MEMORY_CACHE[self.hash]
             # We don't want to store both unserialized and serialized value in the memory cache, so we need to serialize
             # it if we need the serialized data. We only need this if we have to write it to file
-            serialized = self.serializer.dumps(val) if self.output_files is not None and len(self.output_files) > 0 else None
+            serialized = to_bytes_maybe(self.serializer.dumps(val)) if self.output_files is not None and len(self.output_files) > 0 else None
             return val, serialized
 
         if self.cache is None:
@@ -200,7 +206,7 @@ class Future:
             # If not up to date, serialize and write the new file
             if not up_to_date:
                 if specific_out_bytes is None:
-                    specific_out_bytes = log_if_slow(lambda: self.serializer.dumps(specific_out), f'Serializing {sel.fn} out {self.hash} slow')
+                    specific_out_bytes = log_if_slow(lambda: to_bytes_maybe(self.serializer.dumps(specific_out)), f'Serializing {sel.fn} out {self.hash} slow')
 
                 write_track_file(path, specific_out_bytes, self.hash, self.cache, write_merkl_file)
 
@@ -286,7 +292,8 @@ class Future:
         specific_out_bytes = None
         if not self.is_input:  # Futures from io should not be cached (but is read from cache)
             if self.cache is not None:
-                specific_out_bytes = self.serializer.dumps(specific_out)
+                specific_out_bytes = to_bytes_maybe(self.serializer.dumps(specific_out))
+
                 if not self.cache.has(self.hash):  # gotta check again
                     with DelayedKeyboardInterrupt():
                         # Cache needs to be fully done, otherwise we might have added data to sqlite but not file
