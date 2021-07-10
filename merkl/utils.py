@@ -1,3 +1,4 @@
+import os
 import sys
 import ast
 import json
@@ -5,6 +6,7 @@ import inspect
 import hashlib
 import textwrap
 import signal
+from importlib import import_module
 from functools import wraps, lru_cache
 from inspect import isfunction, ismodule, getmodule
 from typing import NamedTuple
@@ -274,3 +276,15 @@ class Eval():
     def __exit__(self, *args, **kwargs):
         global eval_immediately
         eval_immediately = self.prev_val
+
+
+def import_module_function(module_function_str: str):
+    module_name, function_name = module_function_str.rsplit('.', 1)
+
+    cwd = os.getcwd()
+    if cwd not in sys.path:
+        sys.path.append(cwd)
+
+    module = import_module(module_name)
+    function = getattr(module, function_name)
+    return function
