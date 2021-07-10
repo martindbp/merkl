@@ -124,8 +124,9 @@ def migrate_output_files(outs):
             if not write_merkl_file:
                 continue
 
-            logger.info(f'Migrating {output_file} to {future.hash}')
-            _write_merkl_file(output_file, future.hash)
+            if os.path.exists(output_file):
+                logger.info(f'Migrating {output_file} to {future.hash}')
+                _write_merkl_file(output_file, future.hash)
 
 
 class FileRef(str):
