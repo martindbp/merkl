@@ -34,7 +34,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
                 if clamped:
                     deps = deps[:MAX_DEPS]
 
-                deps = '|'.join(name[:MAX_LEN] for name, dep in deps)
+                deps = '|'.join(name[:MAX_LEN] for name, *_ in deps)
                 if clamped:
                     deps += f'|... +{len(node_future.deps)-MAX_DEPS}'
 
@@ -82,7 +82,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             output_files = future.output_files or []
             if future.is_input or len(output_files) > 0:
                 # NOTE: in this case we store the file path in meta
-                path = future.meta if future.is_input else '<br/>'.join(output_files)
+                path = future.meta if future.is_input else '<br/>'.join(path for path, _ in output_files)
                 shape = 'cylinder'
                 node_label = f'{path}<br/>{future.hash[:4]}'
             else:
