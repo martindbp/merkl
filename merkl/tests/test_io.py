@@ -106,6 +106,43 @@ class TestIO(TestCaseWithMerklRepo):
         with self.assertRaises(TypeError):
             out = task1() >> 3
 
+    def test_output_files(self):
+        @task
+        def task1(data):
+            return data
+
+        out = task1(["data"])
+        out_file = 'output_file.pickle'
+        out >> out_file
+        out.eval()
+
+        self.assertTrue(os.path.exists(out_file))
+        self.assertTrue(os.path.exists(out_file + '.merkl'))
+
+        os.remove(out_file)
+        os.remove(out_file + '.merkl')
+
+        out = task1(["data"])
+        out_file = 'output_file.pickle'
+        out >> out_file
+        out.eval()
+
+        self.assertTrue(os.path.exists(out_file))
+        self.assertTrue(os.path.exists(out_file + '.merkl'))
+        with open(out_file+'.merkl', 'r') as f:
+            hash1 = json.load(f)['merkl_hash']
+
+        out = task1(["data2"])
+        out_file = 'output_file.pickle'
+        out >> out_file
+        out.eval()
+
+        with open(out_file+'.merkl', 'r') as f:
+            hash2 = json.load(f)['merkl_hash']
+
+        self.assertNotEqual(hash1, hash2)
+
+
     def test_path_future(self):
         @task
         def task1(path):
