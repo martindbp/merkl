@@ -24,6 +24,7 @@ from merkl.future import Future
 from merkl.exceptions import *
 from merkl.cache import SqliteCache
 from merkl.io import DirRef, FileRef
+from merkl.utils import Eval
 
 next_invocation_id = 0
 
@@ -235,7 +236,11 @@ def batch(
                 else:
                     args_tuple = (args_tuple,)
 
-            out = single_fn(*args_tuple)
+            # In case `eval_immediately` is set (i.e. we're inside an Eval
+            # context), we need to reset this temporarily here, since we don't
+            # want to call `single_fn` yet.
+            with Eval(False):
+                out = single_fn(*args_tuple)
 
             any_out_not_cached = False
             cached_futures = []

@@ -538,6 +538,20 @@ class TestTask(TestCaseWithMerklRepo):
             self.assertEqual(out2, 9)
             self.assertEqual(out3, 6*5)
 
+        @task
+        def my_task3(arg):
+            raise NotImplementedError
+            return 5*arg
+
+        # Test batch task. Before fixing, immediately evaluated futures called the single_fn instead of batch
+        @batch(my_task3)
+        def my_batch(args):
+            return [my_task(arg) for arg in args]
+
+        with Eval():
+            outs = my_batch([2, 3, 4])
+            out2 = my_task(outs)
+
     def test_ignore_args(self):
         @task(ignore_args=['test2', 'kwargs'])
         def my_task(test, test2, *args, arg=3, **kwargs):

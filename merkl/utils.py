@@ -268,10 +268,13 @@ class DelayedKeyboardInterrupt():
 eval_immediately = False
 
 class Eval():
+    def __init__(self, set_val=True):
+        self.set_val = set_val
+
     def __enter__(self, *args, **kwargs):
         global eval_immediately
         self.prev_val = eval_immediately
-        eval_immediately = True
+        eval_immediately = self.set_val  # normally True
 
     def __exit__(self, *args, **kwargs):
         global eval_immediately

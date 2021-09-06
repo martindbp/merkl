@@ -112,7 +112,7 @@ class TestIO(TestCaseWithMerklRepo):
             return data
 
         out = task1(["data"])
-        out_file = 'output_file.pickle'
+        out_file = '/tmp/output_file.pickle'
         out >> out_file
         out.eval()
 
@@ -123,7 +123,7 @@ class TestIO(TestCaseWithMerklRepo):
         os.remove(out_file + '.merkl')
 
         out = task1(["data"])
-        out_file = 'output_file.pickle'
+        out_file = '/tmp/output_file.pickle'
         out >> out_file
         out.eval()
 
@@ -133,7 +133,7 @@ class TestIO(TestCaseWithMerklRepo):
             hash1 = json.load(f)['merkl_hash']
 
         out = task1(["data2"])
-        out_file = 'output_file.pickle'
+        out_file = '/tmp/output_file.pickle'
         out >> out_file
         out.eval()
 
