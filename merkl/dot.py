@@ -20,10 +20,10 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
         if not logger.LONG:
             node_future_hash = node_future_hash[:6]
         node_id = f'{out_name}_{node_future_hash}_{node_future.invocation_id}'
-        code_args_hash = None
-        if node_future.code_args_hash:
-            code_args_hash = f'{node_future.code_args_hash}_{node_future.invocation_id}'
-        if not future.is_input and code_args_hash not in printed:
+        deps_args_hash = None
+        if node_future.deps_args_hash:
+            deps_args_hash = f'{node_future.deps_args_hash}_{node_future.invocation_id}'
+        if not future.is_input and deps_args_hash not in printed:
             fn_name = f'{future.fn_descriptive_name}: {future.fn_code_hash[:4]}'
             if node_future.batch_idx is not None:
                 fn_name = f'{future.fn_descriptive_name} (batch): {future.fn_code_hash[:4]}'
@@ -46,8 +46,8 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             else:
                 label = fn_name
 
-            print(f'\t"fn_{code_args_hash}" [shape=record, label="{label}"];')
-            printed.add(code_args_hash)
+            print(f'\t"fn_{deps_args_hash}" [shape=record, label="{label}"];')
+            printed.add(deps_args_hash)
 
         args_str = ''
         if node_future.bound_args:
@@ -67,15 +67,15 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
 
 
         if args_str:
-            args_id = code_args_hash
+            args_id = deps_args_hash
             args_label = args_str
             if node_future.batch_idx is not None:
                 args_id = f'{args_id}_{out_name}'
                 args_label = f'{out_name}: {args_label}'
             print(f'\t"fn_{args_id}_args" [shape=plain, style=solid, label="{args_label}"];')
-            if f'{args_id}_{code_args_hash}' not in printed:
-                print(f'\t"fn_{args_id}_args" -> "fn_{code_args_hash}";')
-                printed.add(f'{args_id}_{code_args_hash}')
+            if f'{args_id}_{deps_args_hash}' not in printed:
+                print(f'\t"fn_{args_id}_args" -> "fn_{deps_args_hash}";')
+                printed.add(f'{args_id}_{deps_args_hash}')
 
         if node_id not in printed:
             color = 'green' if future.in_cache() or future.is_input else 'red'
@@ -96,7 +96,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
 
             print(f'\t"out_{node_id}" [shape={shape}, style=dashed, label={label}];')
             if not future.is_input:
-                print(f'\t"fn_{code_args_hash}" -> "out_{node_id}"')
+                print(f'\t"fn_{deps_args_hash}" -> "out_{node_id}"')
 
             printed.add(node_id)
 
@@ -105,7 +105,7 @@ def print_dot_graph_nodes(futures, target_fn=None, printed=set()):
             print(f'\t"out_{node_id}" -> "fn_{target_fn}"')
             printed.add(edge_name)
 
-        print_dot_graph_nodes(node_future.parent_futures, code_args_hash, printed)
+        print_dot_graph_nodes(node_future.parent_futures, deps_args_hash, printed)
 
 
 def print_dot_graph(futures, rankdir=None, transparent_bg=False):

@@ -226,6 +226,8 @@ def batch(
         non_cached_outs_args = []
         invocation_id = next_invocation_id
 
+        deps_hash = None
+
         for i, args_tuple in enumerate(args):
             orig_args_tuple = args_tuple
             # Validate that args is a list of tuples, or single_fn has single input
@@ -250,15 +252,21 @@ def batch(
 
                 # Set the invocation id to the same for all futures
                 future.invocation_id = invocation_id
+                # deps_hash is the same for all output Futures, so cache it
+                if deps_hash is not None:
+                    future._deps_hash = deps_hash
+                else:
+                    deps_hash = future.deps_hash
+
                 # Trigger calculation of the hash, which will be cached
                 future.hash
                 # Swap out the function for the batch version
                 future.fn = batch_fn
-                # Swap out code_args_hash to the batch_fn code hash, so
+                # Swap out deps_args_hash to the batch_fn code hash, so
                 # that the the value can be taken out of the shared cache
                 # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to
                 # Store the output temporarily
-                future._code_args_hash = batch_fn_code_hash
+                future._deps_args_hash = batch_fn_code_hash
 
                 if cache_in_memory is not None:
                     future.cache_in_memory = cache_in_memory
@@ -288,9 +296,8 @@ def batch(
 
             outs.append(out)
 
-        futures_set = set(futures)
         for future in futures:
-            future.outs_shared_futures = futures_set
+            future.outs_shared_futures = futures
 
         # Swap out the args to the final list of batch args with non-cached results
         batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args])
@@ -379,6 +386,7 @@ def task(
         outs_shared_cache = {}
         is_single = resolved_outs == 1 and resolved_return_type not in ['Tuple', 'Dict']
         futures = []
+        deps_hash = None
         for out_name in enumerated_outs:
             out_serializer = resolve_serializer(serializer, out_name)
 
@@ -396,12 +404,20 @@ def task(
                 cache_in_memory=cache_in_memory,
                 ignore_args=ignore_args,
             )
+            # `deps_hash` triggers an expensive calculation, but it's the
+            # same for all output futures, so we cache it and set manually
+            if not f.has_batch_fn:
+                # NOTE: if this is a single_fn for a batch task, we don't want to trigger this calculation, as
+                # it would do it for all outputs from the batch task
+                if deps_hash is not None:
+                    future._deps_hash = deps_hash
+                else:
+                    deps_hash = future.deps_hash
             outputs[out_name] = future
             futures.append(future)
 
-        futures_set = set(futures)
         for future in futures:
-            future.outs_shared_futures = futures_set
+            future.outs_shared_futures = futures
 
         next_invocation_id += 1
 

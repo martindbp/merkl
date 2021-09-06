@@ -40,7 +40,7 @@ FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'outs_shared_futures', '_parent_fut
 class Future:
     __slots__ = [
         'fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
-        'outs_shared_cache', '_hash', '_code_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
+        'outs_shared_cache', '_hash', '_deps_args_hash', '_deps_hash', '_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
         '_parent_futures', 'cache_in_memory', 'ignore_args',
     ]
@@ -77,7 +77,9 @@ class Future:
         self.bound_args = bound_args
 
         self._hash = hash
-        self._code_args_hash = None
+        self._deps_args_hash = None
+        self._args_hash = None
+        self._deps_hash = None
 
         # Cache for the all outputs with the respect to a function and its args
         self.outs_shared_cache = outs_shared_cache if outs_shared_cache is not None else {}
@@ -98,9 +100,29 @@ class Future:
         self._parent_futures = None
 
     @property
-    def code_args_hash(self):
-        if self._code_args_hash:
-            return self._code_args_hash
+    def deps_hash(self):
+        if self._deps_hash:
+            return self._deps_hash
+
+        default = partial(_code_args_serializer_default, fn_name=self.fn_descriptive_name)
+
+        hash_data = {
+            'function_deps': self.deps or [],
+        }
+
+        logger.info('Hashing deps for', self.fn)
+        m = hashlib.sha256()
+        try:
+            m.update(bytes(json.dumps(hash_data, sort_keys=True, default=default), 'utf-8'))
+        except (TypeError, dill.PicklingError):
+            raise SerializationError(f'Value in args {hash_data} not JSON or dill-serializable')
+        self._deps_hash = m.hexdigest()
+        return self._deps_hash
+
+    @property
+    def args_hash(self):
+        if self._args_hash:
+            return self._args_hash
 
         if not self.bound_args:
             return None
@@ -113,7 +135,6 @@ class Future:
 
         hash_data = {
             'arguments': nested_map(arguments, map_to_hash, convert_tuples_to_lists=True),
-            'function_deps': self.deps or [],
         }
 
         m = hashlib.sha256()
@@ -121,8 +142,22 @@ class Future:
             m.update(bytes(json.dumps(hash_data, sort_keys=True, default=default), 'utf-8'))
         except (TypeError, dill.PicklingError):
             raise SerializationError(f'Value in args {hash_data} not JSON or dill-serializable')
-        self._code_args_hash = m.hexdigest()
-        return self._code_args_hash
+        self._args_hash = m.hexdigest()
+        return self._args_hash
+
+    @property
+    def deps_args_hash(self):
+        if self._deps_args_hash:
+            return self._deps_args_hash
+
+        if not self.bound_args:
+            return None
+
+        m = hashlib.sha256()
+        m.update(bytes(self.deps_hash, 'utf-8'))
+        m.update(bytes(self.args_hash, 'utf-8'))
+        self._deps_args_hash = m.hexdigest()
+        return self._deps_args_hash
 
     @property
     def hash(self):
@@ -130,7 +165,7 @@ class Future:
             return self._hash
 
         m = hashlib.sha256()
-        m.update(bytes(self.code_args_hash, 'utf-8'))
+        m.update(bytes(self.deps_args_hash, 'utf-8'))
         m.update(bytes(str(self.out_name), 'utf-8'))
         self._hash = m.hexdigest()
         return self._hash
@@ -255,8 +290,8 @@ class Future:
         specific_out_is_ref = False
         outputs = None
         called_function = False
-        if self.code_args_hash and self.code_args_hash in self.outs_shared_cache:
-            outputs = self.outs_shared_cache.get(self.code_args_hash)
+        if self.deps_args_hash and self.deps_args_hash in self.outs_shared_cache:
+            outputs = self.outs_shared_cache.get(self.deps_args_hash)
         else:
             evaluated_args = nested_map(self.bound_args.args, map_future_to_value) if self.bound_args else []
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
@@ -264,13 +299,13 @@ class Future:
             called_function = True
             outputs = self.fn(*evaluated_args, **evaluated_kwargs)
 
-            if self.code_args_hash:
-                self.outs_shared_cache[self.code_args_hash] = outputs
+            if self.deps_args_hash:
+                self.outs_shared_cache[self.deps_args_hash] = outputs
 
                 if self.cache:
                     self.cache.no_commit = True  # for efficiency, commit only after all futures have been cached
 
-                for future in self.outs_shared_futures or set():
+                for future in self.outs_shared_futures or []:
                     if future.hash == self.hash:
                         continue
                     future._eval()
