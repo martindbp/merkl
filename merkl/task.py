@@ -173,6 +173,7 @@ def batch(
     batch_fn,
     single_fn=None,
     hash_mode=HashMode.FIND_DEPS,
+    deps=[],
     cache=SqliteCache,
     serializer=None,
     version=None,
@@ -181,6 +182,9 @@ def batch(
 ):
     if single_fn is None:
         raise BatchTaskError(f"'single_fn' has to be supplied")
+
+    if hasattr(single_fn, 'has_batch_fn'):
+        raise BatchTaskError(f"Trying to create batch task for single function that has already been used")
 
     if not hasattr(single_fn, 'is_merkl') or single_fn.type != 'task':
         raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
@@ -192,7 +196,19 @@ def batch(
     if len(batch_fn_sig.parameters.keys()) != 1:
         raise BatchTaskError(f'Batch function {batch_fn} must have exactly one input arg')
 
-    batch_fn_code_hash = code_hash(batch_fn, True, version)
+    # We create/resolve all deps and add them to `single_fn`, such that results
+    # that come out of the single_fn and batch task have a hash that depends on
+    # the implementation of both
+    if hash_mode == HashMode.FIND_DEPS:
+        deps += find_function_deps(batch_fn)
+    deps = validate_resolve_deps(deps)
+    batch_fn_code_hash = code_hash(batch_fn, hash_mode == HashMode.MODULE, version)
+    deps.append(('batch_function_code_hash', batch_fn_code_hash))
+    deps.append(('batch_function_name', function_descriptive_name(batch_fn, include_module=False)))
+    for dep in deps:
+        single_fn.deps.append(dep)
+
+    single_fn.has_batch_fn = True
 
     @forwards_to_function(batch_fn)
     def wrap(args):

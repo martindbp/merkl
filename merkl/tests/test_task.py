@@ -433,6 +433,27 @@ class TestTask(TestCaseWithMerklRepo):
         with self.assertRaises(TypeError):
             batch_two_args([(1,2), (2,3)])
 
+        # Test that two batch functions with the same single-fn does not have the same output hash
+        @task
+        def single(arg):
+            return arg
+
+        @task
+        def batch_fn(args):
+            return [single(arg) for arg in args]
+
+        out1 = batch_fn(['test'])
+
+        @task
+        def single(arg):
+            return arg
+
+        @task
+        def batch_fn(args):
+            return [single(arg)+'2' for arg in args]
+
+        out2 = batch_fn(['test'])
+        self.assertNotEqual(out1.hash, out2.hash)
 
     def test_pipelines(self):
         @task(cache=None)
