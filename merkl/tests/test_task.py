@@ -505,11 +505,17 @@ class TestTask(TestCaseWithMerklRepo):
         def my_task(arg):
             return 2*arg, 3*arg
 
+        @task
+        def my_task2(arg):
+            return 5*arg
+
         with Eval():
             out1, out2 = my_task(3)
+            out3 = my_task2(out1)
 
             self.assertEqual(out1, 6)
             self.assertEqual(out2, 9)
+            self.assertEqual(out3, 6*5)
 
     def test_ignore_args(self):
         @task(ignore_args=['test2', 'kwargs'])

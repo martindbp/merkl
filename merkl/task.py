@@ -384,6 +384,9 @@ def task(
 
         next_invocation_id += 1
 
+        if merkl.utils.eval_immediately:
+            outputs = nested_map(outputs, eval_futures)
+
         if is_single:
             return outputs[0]
 
@@ -391,9 +394,6 @@ def task(
 
         if len(outputs) > 1000:
             logger.debug(f'Task {f} has many outs ({len(outputs)}), beware that hashing this many outs as args to another task may be slow')
-
-        if merkl.utils.eval_immediately:
-            outputs = nested_map(outputs, eval_futures)
 
         return outputs
 
