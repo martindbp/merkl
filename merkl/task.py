@@ -210,6 +210,7 @@ def batch(
         single_fn.deps.append(dep)
 
     single_fn.has_batch_fn = True
+    single_fn.orig_fn.has_batch_fn = True
 
     @forwards_to_function(batch_fn)
     def wrap(args):
@@ -406,7 +407,7 @@ def task(
             )
             # `deps_hash` triggers an expensive calculation, but it's the
             # same for all output futures, so we cache it and set manually
-            if not f.has_batch_fn:
+            if not hasattr(f, 'has_batch_fn'):
                 # NOTE: if this is a single_fn for a batch task, we don't want to trigger this calculation, as
                 # it would do it for all outputs from the batch task
                 if deps_hash is not None:
