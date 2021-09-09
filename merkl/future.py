@@ -110,7 +110,7 @@ class Future:
             'function_deps': self.deps or [],
         }
 
-        logger.info('Hashing deps for', self.fn)
+        logger.info(f'Hashing deps for {self.fn}')
         m = hashlib.sha256()
         try:
             m.update(bytes(json.dumps(hash_data, sort_keys=True, default=default), 'utf-8'))

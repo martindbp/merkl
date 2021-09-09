@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import glob
 import shutil
 import hashlib
 import collections
@@ -60,6 +61,9 @@ def write_future(future, path, write_merkl_file=False):
 
 
 def fetch_or_compute_md5(path, cache=merkl.cache.SqliteCache, store=True):
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+
     modified = os.stat(path).st_mtime
     md5_hash, _ = cache.get_file_mod_hash(path, modified)
     if md5_hash is None:
@@ -111,7 +115,7 @@ def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCa
         _write_merkl_file(path, merkl_hash)
 
 
-def migrate_output_files(outs):
+def migrate_output_files(outs, files_glob=None):
     """ Migrates the .merkl file hash to the new one, if .merkl file exists for output file """
     futures = nested_collect(outs, lambda x: isinstance(x, merkl.future.Future))
 
@@ -119,14 +123,36 @@ def migrate_output_files(outs):
     for future in futures:
         collect_dag_futures(future, dag_futures, include_parent_pipelines=True)
 
+    files = None
+    if files_glob is not None:
+        files = glob.glob(files_glob)
+        files = set(files)
+
+    migrated_files = []
     for future in dag_futures:
         for output_file, write_merkl_file in future.output_files or []:
+            if files is not None and output_file not in files:
+                continue
+
             if not write_merkl_file:
                 continue
 
+
             if os.path.exists(output_file):
+                current_hash = None
+                if os.path.exists(output_file+'.merkl'):
+                    with open(output_file+'.merkl') as f:
+                        current_hash = json.load(f)['merkl_hash']
+
+                    if future.hash == current_hash:
+                        logger.info(f'{output_file} has up-to-date hash: {current_hash}')
+                        continue
+
                 logger.info(f'Migrating {output_file} to {future.hash}')
                 _write_merkl_file(output_file, future.hash)
+                migrated_files.append(output_file)
+
+    return migrated_files
 
 
 class FileRef(str):

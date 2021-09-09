@@ -190,6 +190,14 @@ class TestIO(TestCaseWithMerklRepo):
         # Now test that the new migrated out file means that out is in cache
         self.assertTrue(out.in_cache())
 
+        # Test migrating with glob
+        out = pipeline(3)
+        migrated_files = migrate_output_files(out, '/tmp/tmpfile.*')
+        self.assertEqual(len(migrated_files), 1)
+
+        out = pipeline(4)
+        migrated_files = migrate_output_files(out, '/tmp/other_tmpfile.*')
+        self.assertEqual(len(migrated_files), 0)
 
 if __name__ == '__main__':
     unittest.main()

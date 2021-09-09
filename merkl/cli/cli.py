@@ -79,6 +79,7 @@ def main():
     migrate_parser = subparsers.add_parser(
         'migrate', description='Migrate output files for a pipeline')
     migrate_parser.set_defaults(command='migrate', subcommand='migrate')
+    migrate_parser.add_argument('-g', '--glob', help='Glob for files to migrate')
     migrate_parser.add_argument('module_function', help='Module function to migrate (<module>.<function>)')
 
 
