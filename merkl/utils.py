@@ -137,6 +137,7 @@ def find_function_deps(f):
         if not isfunction(dep) and not ismodule(dep):
             # Functions and modules are special cases, but anything else
             # that is not serializable to json we skip
+            dep = nested_map(dep, map_set_and_dict_to_list)
             try:
                 json.dumps(dep)
             except TypeError:
@@ -291,3 +292,11 @@ def import_module_function(module_function_str: str):
     module = import_module(module_name)
     function = getattr(module, function_name)
     return function
+
+
+def map_set_and_dict_to_list(item):
+    if isinstance(item, set):
+        return list(sorted(list(item)))
+    elif isinstance(item, dict):
+        return list(sorted(item.items(), key=lambda x: x[0]))
+    return item

@@ -18,6 +18,7 @@ from merkl.utils import (
     get_hash_memory_optimized,
     signature_with_default,
     function_descriptive_name,
+    map_set_and_dict_to_list,
 )
 from merkl.logger import logger, short_hash
 from merkl.future import Future
@@ -130,7 +131,7 @@ def validate_resolve_deps(deps):
             dep = dep.value
 
         if isfunction(dep):
-            if hasattr(dep, 'is_merkl') and dep.type == 'task':
+            if hasattr(dep, 'is_merkl'):
                 dep = dep.orig_fn
             try:
                 dep = f'<Function {dep.__name__}: {code_hash(dep)}>'
@@ -150,6 +151,7 @@ def validate_resolve_deps(deps):
         elif isinstance(dep, FileRef) or isinstance(dep, DirRef):
             dep = dep.hash_repr()
         elif not isinstance(dep, str):
+            dep = nested_map(dep, map_set_and_dict_to_list)
             try:
                 dep = json.dumps(dep)
             except TypeError:
@@ -203,10 +205,10 @@ def batch(
     # the implementation of both
     if hash_mode == HashMode.FIND_DEPS:
         deps += find_function_deps(batch_fn)
-    deps = validate_resolve_deps(deps)
     batch_fn_code_hash = code_hash(batch_fn, hash_mode == HashMode.MODULE, version)
     deps.append(('batch_function_code_hash', batch_fn_code_hash))
     deps.append(('batch_function_name', function_descriptive_name(batch_fn, include_module=False)))
+    deps = validate_resolve_deps(deps)
     for dep in deps:
         single_fn.deps.append(dep)
 
