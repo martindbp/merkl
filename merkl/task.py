@@ -174,13 +174,14 @@ def batch(
     batch_fn,
     single_fn=None,
     hash_mode=HashMode.FIND_DEPS,
-    deps=[],
+    deps=None,
     cache=SqliteCache,
     serializer=None,
     version=None,
     cache_in_memory=None,
     ignore_args=None,
 ):
+    deps = deps or []
     if single_fn is None:
         raise BatchTaskError(f"'single_fn' has to be supplied")
 
