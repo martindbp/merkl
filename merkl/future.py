@@ -110,7 +110,7 @@ class Future:
             'function_deps': self.deps or [],
         }
 
-        logger.info(f'Hashing deps for {self.fn}')
+        logger.info(f'Hashing deps for {function_descriptive_name(self.fn)}')
         m = hashlib.sha256()
         try:
             m.update(bytes(json.dumps(hash_data, sort_keys=True, default=default), 'utf-8'))
@@ -225,7 +225,7 @@ class Future:
                 # reading from source file, not serialized
                 return val, val
 
-            deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn} out {self.hash} slow')
+            deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {function_descriptive_name(self.fn)} out {self.hash} slow')
             return deserialized, val
 
         # Not in regular cache, so check the output files:
@@ -238,7 +238,7 @@ class Future:
                 with open(output_file, 'rb') as f:
                     val = f.read()
 
-                deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn} out {self.hash} slow')
+                deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {function_descriptive_name(self.fn)} out {self.hash} slow')
                 return deserialized, val
 
 
@@ -263,7 +263,7 @@ class Future:
             # If not up to date, serialize and write the new file
             if not up_to_date:
                 if specific_out_bytes is None:
-                    specific_out_bytes = log_if_slow(lambda: to_bytes_maybe(self.serializer.dumps(specific_out)), f'Serializing {sel.fn} out {self.hash} slow')
+                    specific_out_bytes = log_if_slow(lambda: to_bytes_maybe(self.serializer.dumps(specific_out)), f'Serializing {function_descriptive_name(self.fn)} out {self.hash} slow')
 
                 write_track_file(path, specific_out_bytes, self.hash, self.cache, write_merkl_file)
 
@@ -354,10 +354,12 @@ class Future:
                 if not self.cache.has(self.hash):  # gotta check again
                     with DelayedKeyboardInterrupt():
                         # Cache needs to be fully done, otherwise we might have added data to sqlite but not file
+                        ref = (specific_out if specific_out_is_ref else None)
+                        logger.debug(f'Caching {function_descriptive_name(self.fn)} {short_hash(self.hash)} ref={ref}, len(content_bytes)={len(specific_out_bytes)}')
                         self.cache.add(
                             self.hash,
                             specific_out_bytes,
-                            ref=(specific_out if specific_out_is_ref else None)
+                            ref=ref
                         )
 
                 if called_function:  # Make sure we only clear parent futures once for all the output futures
