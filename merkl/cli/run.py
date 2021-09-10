@@ -10,10 +10,14 @@ def evaluate_futures_wrapper(f, no_cache, clear):
     @functools.wraps(f)
     def _wrap(*args, **kwargs):
         outs = f(*args, **kwargs)
+
+        evaluated_outs = evaluate_futures(outs, no_cache)
+
+        # Clear old outs after new have been calculated
         if clear:
             cache.clear(outs, keep=True)
 
-        return evaluate_futures(outs, no_cache)
+        return evaluated_outs
 
     return _wrap
 
