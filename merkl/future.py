@@ -10,7 +10,7 @@ from merkl.exceptions import *
 from merkl.cache import get_modified_time, MEMORY_CACHE
 from merkl.logger import logger, log_if_slow, short_hash
 from merkl.io import write_track_file, write_future, FileRef, DirRef, get_merkl_file_hash
-from merkl.utils import OPERATORS, nested_map, nested_collect, function_descriptive_name, DelayedKeyboardInterrupt
+from merkl.utils import OPERATORS, nested_map, nested_collect, function_descriptive_name, DelayedKeyboardInterrupt, Eval
 
 def map_to_hash(val):
     if isinstance(val, Future):
@@ -297,7 +297,11 @@ class Future:
             evaluated_kwargs = nested_map(self.bound_args.kwargs, map_future_to_value) if self.bound_args else {}
             logger.debug(f'Calling {self.fn_descriptive_name} (out_name={self.out_name})')
             called_function = True
-            outputs = self.fn(*evaluated_args, **evaluated_kwargs)
+
+            # In case an Eval manager was used, we need to reset it so that any calls inside `fn` are not also
+            # evaled immediately
+            with Eval(False):
+                outputs = self.fn(*evaluated_args, **evaluated_kwargs)
 
             if self.deps_args_hash:
                 self.outs_shared_cache[self.deps_args_hash] = outputs

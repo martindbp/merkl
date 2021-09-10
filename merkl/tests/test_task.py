@@ -546,7 +546,7 @@ class TestTask(TestCaseWithMerklRepo):
         # Test batch task. Before fixing, immediately evaluated futures called the single_fn instead of batch
         @batch(my_task3)
         def my_batch(args):
-            return [my_task(arg) for arg in args]
+            return [my_task.orig_fn(arg) for arg in args]
 
         with Eval():
             outs = my_batch([2, 3, 4])
