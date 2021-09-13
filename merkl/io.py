@@ -251,3 +251,34 @@ class DirRef(str):
 
         self._hash = fetch_or_compute_dir_md5(self.files)
         return self._hash
+
+
+class IdentitySerializer:
+    @classmethod
+    def dumps(cls, val):
+        return val
+
+    @classmethod
+    def loads(cls, val):
+        return val
+
+
+class WrappedSerializer:
+    """ A way to wrap another serializer, for supplying args to it when dumping """
+
+    def __init__(self, serializer, *dump_args, **dump_kwargs):
+        self.serializer = serializer
+        self.dump_args = dump_args
+        self.dump_kwargs = dump_kwargs
+
+    def dump(self, *args, **kwargs):
+        return self.serializer.dump(*args, *self.dump_args, **kwargs, **self.dump_kwargs)
+
+    def dumps(self, *args, **kwargs):
+        return self.serializer.dumps(*args, *self.dump_args, **kwargs, **self.dump_kwargs)
+
+    def load(self, *args, **kwargs):
+        return self.serializer.load(*args, **kwargs)
+
+    def loads(self, *args, **kwargs):
+        return self.serializer.loads(*args, **kwargs)
