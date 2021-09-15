@@ -37,11 +37,13 @@ def _code_args_serializer_default(obj, fn_name):
 
 FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'outs_shared_futures', '_parent_futures']
 
+deps_hash_cache = {}
+
 class Future:
     __slots__ = [
         'fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_deps_args_hash', '_deps_hash', '_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
-        'parent_pipeline_future', 'invocation_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
+        'parent_pipeline_future', 'invocation_id', 'task_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
         '_parent_futures', 'cache_in_memory', 'ignore_args',
     ]
 
@@ -62,6 +64,7 @@ class Future:
         output_files=None,
         is_pipeline=False,
         invocation_id=-1,
+        task_id=-1,
         batch_idx=None,
         cache_temporarily=False,
         cache_in_memory=False,
@@ -92,6 +95,7 @@ class Future:
         self.is_pipeline = is_pipeline
         self.parent_pipeline_future = None
         self.invocation_id = invocation_id
+        self.task_id = task_id
         self.batch_idx = batch_idx
         self.cache_temporarily = cache_temporarily
         self.cache_in_memory = cache_in_memory
@@ -102,6 +106,13 @@ class Future:
     @property
     def deps_hash(self):
         if self._deps_hash:
+            return self._deps_hash
+
+        # We cannot cache the deps with only the function as key, because the function could have been
+        # warpped by @task multiple times
+        fn_task_key = f'{self.fn}-{self.task_id}'
+        if fn_task_key in deps_hash_cache:
+            self._deps_hash = deps_hash_cache[fn_task_key]
             return self._deps_hash
 
         default = partial(_code_args_serializer_default, fn_name=self.fn_descriptive_name)
@@ -117,6 +128,7 @@ class Future:
         except (TypeError, dill.PicklingError):
             raise SerializationError(f'Value in args {hash_data} not JSON or dill-serializable')
         self._deps_hash = m.hexdigest()
+        deps_hash_cache[fn_task_key] = self._deps_hash
         return self._deps_hash
 
     @property

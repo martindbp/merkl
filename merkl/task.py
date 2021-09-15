@@ -28,6 +28,7 @@ from merkl.io import DirRef, FileRef
 from merkl.utils import Eval
 
 next_invocation_id = 0
+next_task_id = 0
 
 class HashMode(Enum):
     MODULE = 1
@@ -342,6 +343,7 @@ def task(
     cache_in_memory=False,
     ignore_args=None,
 ):
+    global next_task_id
     deps = deps or []
     ignore_args = ignore_args or []
     sig = sig if sig else signature_with_default(f)
@@ -375,6 +377,7 @@ def task(
 
     deps.append(('function_code_hash', fn_code_hash))
     deps.append(('function_name', function_descriptive_name(f, include_module=False)))
+    task_id = next_task_id
 
     @forwards_to_function(f)
     def wrap(*args, **kwargs):
@@ -405,6 +408,7 @@ def task(
                 bound_args,
                 outs_shared_cache,
                 invocation_id=next_invocation_id,
+                task_id=task_id,
                 cache_in_memory=cache_in_memory,
                 ignore_args=ignore_args,
             )
@@ -443,6 +447,7 @@ def task(
     wrap.outs = outs
     wrap.deps = deps
     wrap.orig_fn = f
+    next_task_id += 1
     return wrap
 
 
