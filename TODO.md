@@ -1,3 +1,5 @@
+Implement cache_metadata and cache_args for tasks. For each cache entry, we now store merkl_hash, args_hash and deps_hash. Args and deps are also stored in the same table. Convert deps from tuple list to dictionary before storing in database, so we can use JSON extension to query.
+
 Investigate if there's some way to persist batch results to a single file. Perhaps we can do:
 >> for res in batch_result:
 >>      res > 'output_file.json'
@@ -5,8 +7,6 @@ And keep track of all Futures that write to a specific file.
 
 
 Rename dot command -> dag, options for outputing json or dot
-
-Migrate command, that takes two dag files in json format and migrates the hashes
 
 Document ignore_args readme
 

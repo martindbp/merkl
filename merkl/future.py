@@ -109,7 +109,7 @@ class Future:
             return self._deps_hash
 
         # We cannot cache the deps with only the function as key, because the function could have been
-        # warpped by @task multiple times
+        # wrapped by @task multiple times
         fn_task_key = f'{self.fn}-{self.task_id}'
         if fn_task_key in deps_hash_cache:
             self._deps_hash = deps_hash_cache[fn_task_key]
