@@ -11,7 +11,7 @@ from merkl.cli.init import InitAPI
 from merkl.cli.run import RunAPI
 from merkl.cli.migrate import MigrateAPI
 from merkl.cli.dot import DotAPI
-from merkl.cli.clear import ClearAPI
+from merkl.cli.cache import CacheAPI
 from merkl.logger import logger
 
 
@@ -19,7 +19,7 @@ class MerkLAPI:
     init = InitAPI()
     run = RunAPI()
     dot = DotAPI()
-    clear = ClearAPI()
+    cache = CacheAPI()
     migrate = MigrateAPI()
 
 
@@ -67,13 +67,12 @@ def main():
     dot_parser.add_argument('-n', '--no-cache', action='store_true', help='Disable caching')
     dot_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
 
-    # ------------- CLEAR --------------
-    clear_parser = subparsers.add_parser(
-        'clear', description='Clears the cache optionially with respect to a pipeline or task')
-    clear_parser.set_defaults(command='clear', subcommand='clear')
-    clear_parser.add_argument('-k', '--keep', action='store_true', help='Keep reachable all values from <module_function>')
-    clear_parser.add_argument('--keep-outs', action='store_true', help='Keep only final <module_function> outputs')
-    clear_parser.add_argument('module_function', help='Module function to use (<module>.<function>)')
+    # ------------- CACHE --------------
+    cache_parser = subparsers.add_parser(
+        'cache', description='Lists or clears cache')
+    cache_parser.set_defaults(command='cache', subcommand='cache')
+    cache_parser.add_argument('-c', '--clear', action='store_true', help='Clears the cache values')
+    cache_parser.add_argument('module_function', nargs='?', default=None, help='Module function to list or clear (<module>.<function>)')
 
     # ------------- MIGRATE --------------
     migrate_parser = subparsers.add_parser(

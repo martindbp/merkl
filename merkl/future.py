@@ -35,13 +35,13 @@ def _code_args_serializer_default(obj, fn_name):
     return str(dill.dumps(obj))
 
 
-FUTURE_STATE_EXCLUDED = ['bound_args', 'fn', 'outs_shared_futures', '_parent_futures']
+FUTURE_STATE_EXCLUDED = ['bound_args', '_fn', 'single_fn', 'outs_shared_futures', '_parent_futures']
 
 deps_hash_cache = {}
 
 class Future:
     __slots__ = [
-        'fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
+        '_fn', 'single_fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_deps_args_hash', '_deps_hash', '_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'task_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
         '_parent_futures', 'cache_in_memory', 'ignore_args',
@@ -69,8 +69,10 @@ class Future:
         cache_temporarily=False,
         cache_in_memory=False,
         ignore_args=None,
+        single_fn=None,
     ):
-        self.fn = fn
+        self._fn = fn
+        self.single_fn = single_fn
         self.fn_code_hash = fn_code_hash
         self.outs = outs
         self.out_name = out_name
@@ -104,13 +106,20 @@ class Future:
         self._parent_futures = None
 
     @property
+    def fn(self):
+        # If self.single_fn is set, then self._fn is the batch version.
+        # Sometimes we want to access the batch one, but by default we use the
+        # single function
+        return self.single_fn or self._fn
+
+    @property
     def deps_hash(self):
         if self._deps_hash:
             return self._deps_hash
 
         # We cannot cache the deps with only the function as key, because the function could have been
         # wrapped by @task multiple times
-        fn_task_key = f'{self.fn}-{self.task_id}'
+        fn_task_key = f'{self._fn}-{self.task_id}'
         if fn_task_key in deps_hash_cache:
             self._deps_hash = deps_hash_cache[fn_task_key]
             return self._deps_hash
@@ -121,7 +130,7 @@ class Future:
             'function_deps': self.deps or [],
         }
 
-        logger.info(f'Hashing deps for {function_descriptive_name(self.fn)}')
+        logger.info(f'Hashing deps for {self.fn_descriptive_name}')
         m = hashlib.sha256()
         try:
             m.update(bytes(json.dumps(hash_data, sort_keys=True, default=default), 'utf-8'))
@@ -237,7 +246,7 @@ class Future:
                 # reading from source file, not serialized
                 return val, val
 
-            deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {function_descriptive_name(self.fn)} out {self.hash} slow')
+            deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn_descriptive_name} out {self.hash} slow')
             return deserialized, val
 
         # Not in regular cache, so check the output files:
@@ -250,7 +259,7 @@ class Future:
                 with open(output_file, 'rb') as f:
                     val = f.read()
 
-                deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {function_descriptive_name(self.fn)} out {self.hash} slow')
+                deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn_descriptive_name} out {self.hash} slow')
                 return deserialized, val
 
 
@@ -275,7 +284,7 @@ class Future:
             # If not up to date, serialize and write the new file
             if not up_to_date:
                 if specific_out_bytes is None:
-                    specific_out_bytes = log_if_slow(lambda: to_bytes_maybe(self.serializer.dumps(specific_out)), f'Serializing {function_descriptive_name(self.fn)} out {self.hash} slow')
+                    specific_out_bytes = log_if_slow(lambda: to_bytes_maybe(self.serializer.dumps(specific_out)), f'Serializing {self.fn_descriptive_name} out {self.hash} slow')
 
                 write_track_file(path, specific_out_bytes, self.hash, self.cache, write_merkl_file)
 
@@ -313,7 +322,7 @@ class Future:
             # In case an Eval manager was used, we need to reset it so that any calls inside `fn` are not also
             # evaled immediately
             with Eval(False):
-                outputs = self.fn(*evaluated_args, **evaluated_kwargs)
+                outputs = self._fn(*evaluated_args, **evaluated_kwargs)
 
             if self.deps_args_hash:
                 self.outs_shared_cache[self.deps_args_hash] = outputs
@@ -371,11 +380,12 @@ class Future:
                     with DelayedKeyboardInterrupt():
                         # Cache needs to be fully done, otherwise we might have added data to sqlite but not file
                         ref = (specific_out if specific_out_is_ref else None)
-                        logger.debug(f'Caching {function_descriptive_name(self.fn)} {short_hash(self.hash)} ref={ref}, len(content_bytes)={len(specific_out_bytes)}')
+                        logger.debug(f'Caching {self.fn_descriptive_name} {short_hash(self.hash)} ref={ref}, len(content_bytes)={len(specific_out_bytes)}')
                         self.cache.add(
                             self.hash,
                             specific_out_bytes,
-                            ref=ref
+                            ref=ref,
+                            fn_name=self.fn_descriptive_name,
                         )
 
                 if called_function:  # Make sure we only clear parent futures once for all the output futures

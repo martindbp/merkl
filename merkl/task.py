@@ -266,7 +266,8 @@ def batch(
                 # Trigger calculation of the hash, which will be cached
                 future.hash
                 # Swap out the function for the batch version
-                future.fn = batch_fn
+                future.single_fn = future.fn
+                future._fn = batch_fn
                 # Swap out deps_args_hash to the batch_fn code hash, so
                 # that the the value can be taken out of the shared cache
                 # NOTE: this doesn't need to have deps and stuff, because it's not used for persistent caching, just to

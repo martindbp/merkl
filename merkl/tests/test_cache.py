@@ -7,7 +7,7 @@ from merkl.exceptions import *
 from merkl.tests import TestCaseWithMerklRepo
 from merkl.io import FileRef, DirRef
 from merkl.cache import get_cache_file_path, SqliteCache, BLOB_DB_SIZE_LIMIT_BYTES, MEMORY_CACHE
-from merkl.utils import evaluate_futures
+from merkl.utils import evaluate_futures, Eval
 from merkl.util_tasks import combine_file_refs
 
 
@@ -243,7 +243,6 @@ class TestCache(TestCaseWithMerklRepo):
         SqliteCache.clear(hash)
         self.assertFalse(os.path.exists(get_cache_file_path(hash)))
 
-
     def test_siblings_evaluated(self):
         # There's an issue where if a function has multiple outs, and only some of them have been evaluated before the
         # program crashes for some reason, then those outs that were not evaluated are never cached, even though the
@@ -347,6 +346,33 @@ class TestCache(TestCaseWithMerklRepo):
         self.assertEqual(len(MEMORY_CACHE), 1)
         self.assertEqual(MEMORY_CACHE[out.hash], 4)
 
+    def test_stats(self):
+        SqliteCache.add('h1', b'123', fn_name='module1.function1')
+        SqliteCache.add('h2', b'12345', fn_name='module1.function1')
+
+        SqliteCache.add('h3', b'12', fn_name='module1.function2')
+        SqliteCache.add('h4', b'1234', fn_name='module1.function2')
+        stats = SqliteCache.get_stats()
+        self.assertEqual(stats[0], ('module1.function1', 2, 3+5))
+        self.assertEqual(stats[1], ('module1.function2', 2, 2+4))
+
+        self.assertEqual(SqliteCache.get_stats('module1.function1'), (2, 3+5))
+
+    def test_batch_stats(self):
+        @task
+        def my_task(val):
+            return 2*val
+
+        @batch(my_task)
+        def my_batch_task(vals):
+            return [2*val for val in vals]
+
+        with Eval():
+            my_batch_task([1,2,3])
+
+        stats = SqliteCache.get_stats()
+        # Test that it's reported as coming from the single fn
+        self.assertEqual(stats[0][0], 'test_cache.my_task')
 
 if __name__ == '__main__':
     unittest.main()
