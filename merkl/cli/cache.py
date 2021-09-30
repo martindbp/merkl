@@ -14,7 +14,5 @@ class CacheAPI:
             print(f'Num entries: {count}')
             print(f'Total size: {size} bytes ({size / 10e6}M)')
         else:
-            for module_function, count, size in cache.SqliteCache.get_stats():
-                if count == 0:
-                    continue
+            for module_function, count, size in sorted(cache.SqliteCache.get_stats(), key=lambda x: x[2]):
                 print(f'{size/10e6:.2f}M\t{count}\t{module_function}')

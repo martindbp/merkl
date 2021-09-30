@@ -114,6 +114,7 @@ class SqliteCache:
             CREATE TABLE cache (
                 hash CHARACTER(64) PRIMARY KEY,
                 data BLOB,
+                size INTEGER,
                 ref_path TEXT,
                 ref_is_dir BOOL,
                 module_function TEXT NULL
@@ -173,7 +174,7 @@ class SqliteCache:
             content_bytes = None
 
         cls.connect()
-        cls.cursor.execute("INSERT INTO cache VALUES (?, ?, ?, ?, ?)", (hash, content_bytes, ref_path, ref_is_dir, fn_name))
+        cls.cursor.execute("INSERT INTO cache VALUES (?, ?, ?, ?, ?, ?)", (hash, content_bytes, content_len, ref_path, ref_is_dir, fn_name))
         if not cls.no_commit:
             cls.connection.commit()
 
@@ -292,12 +293,12 @@ class SqliteCache:
     def get_stats(cls, module_function=None):
         cls.connect()
         if module_function is not None:
-            return list(cls.cursor.execute("SELECT COUNT(data), SUM(LENGTH(data)) FROM cache WHERE module_function=?", (module_function,)))[0]
+            return list(cls.cursor.execute("SELECT COUNT(*), SUM(size) FROM cache WHERE module_function=?", (module_function,)))[0]
         else:
-            return list(cls.cursor.execute("SELECT module_function, COUNT(data), SUM(LENGTH(data)) FROM cache GROUP BY module_function"))
+            return list(cls.cursor.execute("SELECT module_function, COUNT(*), SUM(size) FROM cache GROUP BY module_function"))
 
     @classmethod
     def clear_module_function(cls, module_function):
         cls.connect()
-        result = list(cls.cursor.execute("SELECT module_function, SUM(LENGTH(data)) FROM cache GROUP BY module_function"))
+        result = list(cls.cursor.execute("DELETE FROM cache WHERE module_function=?", (module_function,)))
         return result

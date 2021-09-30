@@ -358,6 +358,10 @@ class TestCache(TestCaseWithMerklRepo):
 
         self.assertEqual(SqliteCache.get_stats('module1.function1'), (2, 3+5))
 
+        # Test that large blobs stored on the filesystem are counted correctly
+        SqliteCache.add('h5', b'12'*BLOB_DB_SIZE_LIMIT_BYTES, fn_name='module1.function3')
+        self.assertEqual(SqliteCache.get_stats('module1.function3'), (1, 2*BLOB_DB_SIZE_LIMIT_BYTES))
+
     def test_batch_stats(self):
         @task
         def my_task(val):
