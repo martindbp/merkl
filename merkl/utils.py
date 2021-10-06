@@ -145,7 +145,12 @@ def find_function_deps(f):
 
         # Skip stuff defined in builtin modules
         dep_module = inspect.getmodule(dep)
-        if dep_module and dep_module.__name__ in BUILTIN_MODULES:
+        dep_module_name = dep_module.__name__ if dep_module is not None else None
+        if dep_module_name == '__main__':
+            # When module is being run directly, name is not representative, have to use this hack:
+            dep_module_name = os.path.splitext(os.path.basename(dep_module.__file__))[0]
+
+        if dep_module_name in BUILTIN_MODULES:
             continue
 
         deps.append(FunctionDep(node.id, dep))
