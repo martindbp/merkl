@@ -362,6 +362,18 @@ class TestCache(TestCaseWithMerklRepo):
         SqliteCache.add('h5', b'12'*BLOB_DB_SIZE_LIMIT_BYTES, fn_name='module1.function3')
         self.assertEqual(SqliteCache.get_stats('module1.function3'), (1, 2*BLOB_DB_SIZE_LIMIT_BYTES))
 
+        # Test that FileRefs returned from tasks are counted correctly
+        num_bytes = 32
+        @task
+        def my_task():
+            file_ref = FileRef()
+            with open(file_ref, 'w') as f:
+                f.write('a'*num_bytes)
+            return file_ref
+
+        my_task().eval()
+        self.assertEqual(SqliteCache.get_stats('test_cache.my_task'), (1, num_bytes))
+
     def test_batch_stats(self):
         @task
         def my_task(val):

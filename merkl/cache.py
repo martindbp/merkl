@@ -163,6 +163,9 @@ class SqliteCache:
     @classmethod
     def add(cls, hash, content_bytes=None, ref=None, fn_name=None):
         content_len = len(content_bytes) if content_bytes is not None else 0
+        if ref is not None:
+            content_len = os.stat(ref).st_size
+
         ref_path = None if ref is None else str(ref)
         ref_is_dir = isinstance(ref, merkl.io.DirRef)
 
