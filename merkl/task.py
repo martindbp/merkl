@@ -17,6 +17,7 @@ from merkl.utils import (
     FunctionDep,
     get_hash_memory_optimized,
     signature_with_default,
+    signature_args_kwargs,
     function_descriptive_name,
     map_set_and_dict_to_list,
 )
@@ -188,18 +189,27 @@ def batch(
     if single_fn is None:
         raise BatchTaskError(f"'single_fn' has to be supplied")
 
+    batch_fn_name = function_descriptive_name(batch_fn)
+    single_fn_name = function_descriptive_name(single_fn)
+
     if hasattr(single_fn, 'has_batch_fn'):
         raise BatchTaskError(f"Trying to create batch task for single function that has already been used")
 
     if not hasattr(single_fn, 'is_merkl') or single_fn.type != 'task':
-        raise BatchTaskError(f'Function {single_fn} is not decorated as a task')
+        raise BatchTaskError(f'Function {single_fn_name} is not decorated as a task')
 
     if not isinstance(hash_mode, HashMode):
-        raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
+        raise TypeError(f'Unexpected HashMode value {hash_mode} for function {batch_fn_name}')
 
     batch_fn_sig = signature_with_default(batch_fn)
-    if len(batch_fn_sig.parameters.keys()) != 1:
-        raise BatchTaskError(f'Batch function {batch_fn} must have exactly one input arg')
+    batch_args, batch_kwargs = signature_args_kwargs(batch_fn)
+    single_args, single_kwargs = signature_args_kwargs(single_fn)
+    if len(batch_args) != 1:
+        raise BatchTaskError(f'Batch function {batch_fn_name} must have exactly one input arg (but possibly more kwargs)')
+
+    for kwarg in batch_kwargs:
+        if kwarg not in single_args + single_kwargs:
+            raise BatchTaskError(f'Kwarg {kwarg} passed to batch function {batch_fn_name} that does not exist in single signature')
 
     # We create/resolve all deps and add them to `single_fn`, such that results
     # that come out of the single_fn and batch task have a hash that depends on
@@ -217,7 +227,7 @@ def batch(
     single_fn.orig_fn.has_batch_fn = True
 
     @forwards_to_function(batch_fn)
-    def wrap(args):
+    def wrap(args, **kwargs):
         global next_invocation_id
 
         if callable(args):
@@ -238,8 +248,8 @@ def batch(
             # Validate that args is a list of tuples, or single_fn has single input
             if not isinstance(args_tuple, tuple):
                 # If single_fn has multiple parameters, then `args_tuple` has to be a tuple
-                if len(signature_with_default(single_fn).parameters.keys()) != 1:
-                    raise BatchTaskError(f'Batch arg {args_tuple} is not a tuple')
+                if len(single_args) + len(single_kwargs) - len(kwargs) != 1:
+                    raise BatchTaskError(f'The arguments to the batch function {batch_fn_name} arg are not tuples, but there are more than 1 arg that needs to be supplied')
                 else:
                     args_tuple = (args_tuple,)
 
@@ -247,7 +257,7 @@ def batch(
             # context), we need to reset this temporarily here, since we don't
             # want to call `single_fn` yet.
             with Eval(False):
-                out = single_fn(*args_tuple)
+                out = single_fn(*args_tuple, **kwargs)
 
             any_out_not_cached = False
             cached_futures = []
@@ -306,7 +316,7 @@ def batch(
             future.outs_shared_futures = futures
 
         # Swap out the args to the final list of batch args with non-cached results
-        batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args])
+        batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args], **kwargs)
         for i, (out, _) in enumerate(non_cached_outs_args):
             for future in nested_collect(out, lambda x: isinstance(x, Future)):
                 future.bound_args = batch_bound_args
@@ -316,7 +326,7 @@ def batch(
         next_invocation_id = invocation_id + 1
 
         if len(outs) > 1000:
-            logger.debug(f'Batch task {batch_fn} has many outs ({len(outs)}), beware that hashing this many outs as args to another task may be slow')
+            logger.debug(f'Batch task {batch_fn_name} has many outs ({len(outs)}), beware that hashing this many outs as args to another task may be slow')
 
         if merkl.utils.eval_immediately:
             outs = nested_map(outs, eval_futures)

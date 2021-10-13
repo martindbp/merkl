@@ -455,6 +455,35 @@ class TestTask(TestCaseWithMerklRepo):
         out2 = batch_fn(['test'])
         self.assertNotEqual(out1.hash, out2.hash)
 
+        #
+        # Test batch with keyword args passed to each invocation
+        #
+        @task
+        def single_task(arg1, arg2, some_option):
+            if some_option is True:
+                return arg1 * arg2
+            else:
+                return arg1 + arg2
+
+        with self.assertRaises(BatchTaskError):
+            @batch(single_task)
+            def batch_task(args, some_option_that_does_not_exist=True):
+                pass
+
+        @batch(single_task)
+        def batch_task(args, some_option=True):
+            out = []
+            for arg1, arg2 in args:
+                if some_option:
+                    out.append(arg1*arg2)
+                else:
+                    out.append(arg1+arg2)
+            return out
+
+        with Eval():
+            self.assertEqual(batch_task([(1, 1), (2, 2), (3, 3)], some_option=True), [1, 4, 9])
+            self.assertEqual(batch_task([(1, 1), (2, 2), (3, 3)], some_option=False), [2, 4, 6])
+
     def test_pipelines(self):
         @task(cache=None)
         def my_task(k):

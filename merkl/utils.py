@@ -245,6 +245,13 @@ def signature_with_default(f):
         return default_signature
 
 
+def signature_args_kwargs(f):
+    sig = signature_with_default(f)
+    args = [v.name for v in sig.parameters.values() if v.default == inspect._empty]
+    kwargs = [v.name for v in sig.parameters.values() if v.default != inspect._empty]
+    return args, kwargs
+
+
 @lru_cache(maxsize=None)
 def function_descriptive_name(fn, include_module=True):
     fn_name = fn.__name__ if hasattr(fn, '__name__') else str(fn)
