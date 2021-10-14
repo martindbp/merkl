@@ -1,14 +1,4 @@
-Allow an arg to be passed to each batch invocation:
-
-@task
-def single_task(arg1, arg2, some_option):
-    ...
-
-@batch(single_task)
-def batch_task(args, some_option):
-    ...
-
-batch_task([1, 2, 3, 4, 5, 6], some_option=55)
+Need a way to load a Future from a tracked file.
 
 Implement cache_metadata and cache_args for tasks. For each cache entry, we now store merkl_hash, args_hash and deps_hash. Args and deps are also stored in the same table. Convert deps from tuple list to dictionary before storing in database, so we can use JSON extension to query.
 

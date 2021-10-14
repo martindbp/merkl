@@ -1,4 +1,5 @@
 import sys
+import json
 import unittest
 from io import StringIO
 
@@ -605,6 +606,19 @@ class TestTask(TestCaseWithMerklRepo):
             return inner_task(arg).eval()
 
         self.assertEqual(outer_task(3).eval(), 6)
+
+    def test_future_from_file(self):
+        @task(serializer=json)
+        def my_task(asd):
+            return 2*asd
+
+        out = my_task(4)
+        out >> '/tmp/my_file.json'
+        out.eval()
+
+        out2 = Future.from_file('/tmp/my_file.json')
+        self.assertEqual(out.hash, out2.hash)
+        self.assertEqual(out.eval(), out2.eval())
 
 
 if __name__ == '__main__':

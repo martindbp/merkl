@@ -1,3 +1,4 @@
+import os
 import json
 import hashlib
 from collections import defaultdict
@@ -286,7 +287,7 @@ class Future:
                 if specific_out_bytes is None:
                     specific_out_bytes = log_if_slow(lambda: to_bytes_maybe(self.serializer.dumps(specific_out)), f'Serializing {self.fn_descriptive_name} out {self.hash} slow')
 
-                write_track_file(path, specific_out_bytes, self.hash, self.cache, write_merkl_file)
+                write_track_file(path, specific_out_bytes, self, self.cache, write_merkl_file)
 
     def eval(self):
         if self.in_cache():
@@ -405,7 +406,7 @@ class Future:
         return f'<Future: {self.hash[:8]}>'
 
     def __getstate__(self):
-        # NOTE: a future is only pickled/serialized when it is returned by a pipeline 
+        # NOTE: a future is only pickled/serialized when it is returned by a pipeline, or when tracked in a file
 
         if self.cache is None:
             raise SerializationError(f'Serializing {repr(self)} ({self.fn_descriptive_name}: {self.out_name}) but there is no cache set')
@@ -414,7 +415,7 @@ class Future:
         self.hash
 
         # When we pickle a Future (for returning from pipelines), we don't want to pickle the whole graph and
-        # potentially large data, so exclude `bound_args` which may contain futures
+        # potentially large data, so exclude e.g. `bound_args` which may contain futures
         # Also, the function may not be pickleable, and we don't need it when loading a cached Future
         state = {s: getattr(self, s, None) for s in self.__slots__ if s not in FUTURE_STATE_EXCLUDED}
 
@@ -457,6 +458,13 @@ class Future:
     def deny_access(self, *args, **kwargs):
         raise FutureAccessError
 
+    @classmethod
+    def from_file(cls, path):
+        if not os.path.exists(path + '.merkl'):
+            raise FileNotFoundError(path + '.merkl')
+
+        with open(path + '.merkl', 'rb') as f:
+            return dill.load(f)
 
 
 # Override all the operators of Future to raise a specific exception when used

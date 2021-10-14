@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import dill
 import glob
 import shutil
 import hashlib
@@ -83,22 +84,20 @@ def fetch_or_compute_dir_md5(files, cache=merkl.cache.SqliteCache, store=True):
     return h.hexdigest()
 
 
-def _write_merkl_file(path, merkl_hash):
-    with open(path + '.merkl', 'w') as f:
-        f.write(json.dumps({
-            'merkl_hash': merkl_hash,
-        }))
+def _write_merkl_file(path, future):
+    with open(path + '.merkl', 'wb') as f:
+        dill.dump(future, f)
 
 
 def get_merkl_file_hash(path):
     if not os.path.exists(path + '.merkl'):
         return None
 
-    with open(path + '.merkl', 'r') as f:
-        return json.loads(f.read())['merkl_hash']
+    with open(path + '.merkl', 'rb') as f:
+        return dill.load(f).hash
 
 
-def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCache, write_merkl_file=False):
+def write_track_file(path, content_bytes, future, cache=merkl.cache.SqliteCache, write_merkl_file=False):
     logger.debug(f'Writing to path: {path}')
     if isinstance(content_bytes, FileRef):
         shutil.copy(content_bytes, path)
@@ -110,9 +109,9 @@ def write_track_file(path, content_bytes, merkl_hash, cache=merkl.cache.SqliteCa
 
     # NOTE: we could get the md5 hash and store it, but not strictly necessary for
     # files that merkl has "created". The md5 is necessary though for files _read_ by merkl but produced elsewhere
-    cache.track_file(path, merkl_hash=merkl_hash)
+    cache.track_file(path, merkl_hash=future.hash)
     if write_merkl_file:
-        _write_merkl_file(path, merkl_hash)
+        _write_merkl_file(path, future)
 
 
 def migrate_output_files(outs, files_glob=None):
@@ -141,15 +140,18 @@ def migrate_output_files(outs, files_glob=None):
             if os.path.exists(output_file):
                 current_hash = None
                 if os.path.exists(output_file+'.merkl'):
-                    with open(output_file+'.merkl') as f:
-                        current_hash = json.load(f)['merkl_hash']
+                    with open(output_file+'.merkl', 'rb') as f:
+                        try:
+                            current_hash = dill.load(f).hash
+                        except:
+                            logger.warning(f'Unable to deserialize {output_file}.merkl content')
 
                     if future.hash == current_hash:
                         logger.info(f'{output_file} has up-to-date hash: {current_hash}')
                         continue
 
                 logger.info(f'Migrating {output_file} to {future.hash}')
-                _write_merkl_file(output_file, future.hash)
+                _write_merkl_file(output_file, future)
                 migrated_files.append(output_file)
 
     return migrated_files
@@ -189,6 +191,7 @@ class FileRef(str):
 
         self._hash = fetch_or_compute_md5(self)
         return self._hash
+
 
 class DirRef(str):
     __slots__ = ['rm_after_caching', '_hash', '_files']

@@ -1,6 +1,7 @@
 import os
 import json
 import pickle
+import dill
 import shutil
 import unittest
 from time import sleep
@@ -99,8 +100,8 @@ class TestIO(TestCaseWithMerklRepo):
         with open(self.tmp_file, 'rb') as f:
             self.assertEqual(f.read(), pickle.dumps(b'some data2'))
 
-        with open(self.tmp_file + '.merkl', 'r') as f:
-            self.assertEqual(json.loads(f.read())['merkl_hash'], out.hash)
+        with open(self.tmp_file + '.merkl', 'rb') as f:
+            self.assertEqual(dill.load(f).hash, out.hash)
 
         # Make types other than strings raises errors
         with self.assertRaises(TypeError):
@@ -129,16 +130,16 @@ class TestIO(TestCaseWithMerklRepo):
 
         self.assertTrue(os.path.exists(out_file))
         self.assertTrue(os.path.exists(out_file + '.merkl'))
-        with open(out_file+'.merkl', 'r') as f:
-            hash1 = json.load(f)['merkl_hash']
+        with open(out_file+'.merkl', 'rb') as f:
+            hash1 = dill.load(f).hash
 
         out = task1(["data2"])
         out_file = '/tmp/output_file.pickle'
         out >> out_file
         out.eval()
 
-        with open(out_file+'.merkl', 'r') as f:
-            hash2 = json.load(f)['merkl_hash']
+        with open(out_file+'.merkl', 'rb') as f:
+            hash2 = dill.load(f).hash
 
         self.assertNotEqual(hash1, hash2)
 
@@ -174,16 +175,16 @@ class TestIO(TestCaseWithMerklRepo):
 
         out = pipeline(1).eval()
 
-        with open(self.tmp_file + '.merkl', 'r') as f:
-            hash1 = json.loads(f.read())['merkl_hash']
+        with open(self.tmp_file + '.merkl', 'rb') as f:
+            hash1 = dill.load(f).hash
 
         out = pipeline(2)
         self.assertFalse(out.in_cache())
 
         migrate_output_files(out)
 
-        with open(self.tmp_file + '.merkl', 'r') as f:
-            hash2 = json.loads(f.read())['merkl_hash']
+        with open(self.tmp_file + '.merkl', 'rb') as f:
+            hash2 = dill.load(f).hash
 
         self.assertNotEqual(hash1, hash2)
 
