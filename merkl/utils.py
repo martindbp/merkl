@@ -248,7 +248,7 @@ def signature_with_default(f):
 def signature_args_kwargs(f):
     sig = signature_with_default(f)
     args = [v.name for v in sig.parameters.values() if v.default == inspect._empty]
-    kwargs = [v.name for v in sig.parameters.values() if v.default != inspect._empty]
+    kwargs = {v.name: v.default for v in sig.parameters.values() if v.default != inspect._empty}
     return args, kwargs
 
 

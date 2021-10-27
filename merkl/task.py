@@ -207,9 +207,13 @@ def batch(
     if len(batch_args) != 1:
         raise BatchTaskError(f'Batch function {batch_fn_name} must have exactly one input arg (but possibly more kwargs)')
 
-    for kwarg in batch_kwargs:
-        if kwarg not in single_args + single_kwargs:
-            raise BatchTaskError(f'Kwarg {kwarg} passed to batch function {batch_fn_name} that does not exist in single signature')
+    for kwarg, default in batch_kwargs.items():
+        if kwarg not in single_kwargs:
+            raise BatchTaskError(f'kwarg {kwarg} passed to batch function {batch_fn_name} that does not exist in single function\'s kwargs')
+        single_default = single_kwargs[kwarg]
+        if single_default != default:
+            raise BatchTaskError(f'{batch_fn_name} kwarg {kwarg} default value ({default}) differs from single function\'s default value ({single_default})')
+
 
     # We create/resolve all deps and add them to `single_fn`, such that results
     # that come out of the single_fn and batch task have a hash that depends on
@@ -248,10 +252,7 @@ def batch(
             # Validate that args is a list of tuples, or single_fn has single input
             if not isinstance(args_tuple, tuple):
                 # If single_fn has multiple parameters, then `args_tuple` has to be a tuple
-                if len(single_args) + len(single_kwargs) - len(kwargs) != 1:
-                    raise BatchTaskError(f'The arguments to the batch function {batch_fn_name} arg are not tuples, but there are more than 1 arg that needs to be supplied')
-                else:
-                    args_tuple = (args_tuple,)
+                args_tuple = (args_tuple,)
 
             # In case `eval_immediately` is set (i.e. we're inside an Eval
             # context), we need to reset this temporarily here, since we don't
@@ -317,6 +318,7 @@ def batch(
 
         # Swap out the args to the final list of batch args with non-cached results
         batch_bound_args = batch_fn_sig.bind([args for _, args in non_cached_outs_args], **kwargs)
+        batch_bound_args.apply_defaults()
         for i, (out, _) in enumerate(non_cached_outs_args):
             for future in nested_collect(out, lambda x: isinstance(x, Future)):
                 future.bound_args = batch_bound_args

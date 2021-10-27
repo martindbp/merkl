@@ -467,8 +467,27 @@ class TestTask(TestCaseWithMerklRepo):
                 return arg1 + arg2
 
         with self.assertRaises(BatchTaskError):
+            # Should raise because some_option is not a kwarg in single_task
+            @batch(single_task)
+            def batch_task(args, some_option=True):
+                pass
+
+        @task
+        def single_task(arg1, arg2, some_option=True):
+            if some_option is True:
+                return arg1 * arg2
+            else:
+                return arg1 + arg2
+
+        with self.assertRaises(BatchTaskError):
             @batch(single_task)
             def batch_task(args, some_option_that_does_not_exist=True):
+                pass
+
+        with self.assertRaises(BatchTaskError):
+            # Should raise because some_option default value differs from single_task
+            @batch(single_task)
+            def batch_task(args, some_option=False):
                 pass
 
         @batch(single_task)
@@ -484,6 +503,33 @@ class TestTask(TestCaseWithMerklRepo):
         with Eval():
             self.assertEqual(batch_task([(1, 1), (2, 2), (3, 3)], some_option=True), [1, 4, 9])
             self.assertEqual(batch_task([(1, 1), (2, 2), (3, 3)], some_option=False), [2, 4, 6])
+            # NOTE: some_option should default to True here:
+            self.assertEqual(batch_task([(1, 1), (2, 2), (3, 3)]), [1, 4, 9])
+
+        @task
+        def single_task(arg, some_option=True):
+            if some_option is True:
+                return arg1 * arg2
+            else:
+                return arg1 + arg2
+
+        @batch(single_task)
+        def batch_task(args, some_option=True):
+            out = []
+            for arg in args:
+                if some_option:
+                    out.append(arg*2)
+                else:
+                    out.append(arg+2)
+            return out
+
+        with Eval():
+            self.assertEqual(batch_task([1, 2, 3], some_option=True), [2, 4, 6])
+            # There was a problem where an exception was raised if not all kwargs were supplied
+            asd = batch_task([1, 2, 3])
+            self.assertEqual(batch_task([1, 2, 3]), [2, 4, 6])
+            self.assertEqual(batch_task([1, 2, 3], some_option=False), [3, 4, 5])
+
 
     def test_pipelines(self):
         @task(cache=None)

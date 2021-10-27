@@ -1,12 +1,4 @@
-Need a way to load a Future from a tracked file.
-
 Implement cache_metadata and cache_args for tasks. For each cache entry, we now store merkl_hash, args_hash and deps_hash. Args and deps are also stored in the same table. Convert deps from tuple list to dictionary before storing in database, so we can use JSON extension to query.
-
-Investigate if there's some way to persist batch results to a single file. Perhaps we can do:
->> for res in batch_result:
->>      res > 'output_file.json'
-And keep track of all Futures that write to a specific file. 
-
 
 Rename dot command -> dag, options for outputing json or dot
 
@@ -15,6 +7,7 @@ Document ignore_args readme
 Can we create Futures on the fly from a generator? MerklList, MerklDict
 
 When a task has a lot of outputs, like a corpus (list of sentences), then it would be much better to cache outputs together.
+Downside is, if you only want one, then you have to deserialize all of them and pick the right out_name
 
 Strip comments and whitespace from code before hashing? Maybe not, you might want to add some whitespace to get a different hash
 
