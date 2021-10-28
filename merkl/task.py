@@ -38,7 +38,7 @@ class HashMode(Enum):
 
 
 @lru_cache(maxsize=None)
-def code_hash(f, is_module=False, version=None):
+def code_hash(f, is_module=False, version=None, hash_key=None):
     module = None
     if is_module:
         module = getmodule(f)
@@ -49,6 +49,10 @@ def code_hash(f, is_module=False, version=None):
         if module is None:
             module = getmodule(f)
         return f'{module.__name__}.{f.__name__}-{version}'
+    elif hash_key is not None:
+        if not isinstance(hash_key, str):
+            raise ValueError(f'Task hash_key was not a string: {hash_key}: {type(hash_key)}')
+        return hash_key
 
     try:
         code = textwrap.dedent(getsource(code_obj))
@@ -182,6 +186,7 @@ def batch(
     cache=SqliteCache,
     serializer=None,
     version=None,
+    hash_key=None,
     cache_in_memory=None,
     ignore_args=None,
 ):
@@ -220,7 +225,7 @@ def batch(
     # the implementation of both
     if hash_mode == HashMode.FIND_DEPS:
         deps += find_function_deps(batch_fn)
-    batch_fn_code_hash = code_hash(batch_fn, hash_mode == HashMode.MODULE, version)
+    batch_fn_code_hash = code_hash(batch_fn, hash_mode == HashMode.MODULE, version, hash_key)
     deps.append(('batch_function_code_hash', batch_fn_code_hash))
     deps.append(('batch_function_name', function_descriptive_name(batch_fn, include_module=False)))
     deps = validate_resolve_deps(deps)
@@ -353,6 +358,7 @@ def task(
     serializer=None,
     sig=None,
     version=None,
+    hash_key=None,
     cache_in_memory=False,
     ignore_args=None,
 ):
@@ -381,7 +387,7 @@ def task(
     if not isinstance(hash_mode, HashMode):
         raise TypeError(f'Unexpected HashMode value {hash_mode} for function {f}')
 
-    fn_code_hash = code_hash(f, hash_mode == HashMode.MODULE, version)
+    fn_code_hash = code_hash(f, hash_mode == HashMode.MODULE, version, hash_key)
 
     if hash_mode == HashMode.FIND_DEPS:
         deps += find_function_deps(f)
