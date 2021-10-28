@@ -36,7 +36,7 @@ def _code_args_serializer_default(obj, fn_name):
     return str(dill.dumps(obj))
 
 
-FUTURE_STATE_EXCLUDED = ['bound_args', '_fn', 'single_fn', 'outs_shared_futures', '_parent_futures']
+FUTURE_STATE_EXCLUDED = ['bound_args', '_fn', 'single_fn', 'outs_shared_futures', '_parent_futures', '_val']
 
 deps_hash_cache = {}
 
@@ -45,7 +45,7 @@ class Future:
         '_fn', 'single_fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_deps_args_hash', '_deps_hash', '_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'task_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
-        '_parent_futures', 'cache_in_memory', 'ignore_args',
+        '_parent_futures', 'cache_in_memory', 'ignore_args', '_val',
     ]
 
     def __init__(
@@ -105,6 +105,7 @@ class Future:
         self.ignore_args = ignore_args
         self.outs_shared_futures = None
         self._parent_futures = None
+        self._val = None
 
     @property
     def fn(self):
@@ -263,8 +264,9 @@ class Future:
                 deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn_descriptive_name} out {self.hash} slow')
                 return deserialized, val
 
-
     def clear_cache(self):
+        self._val = None
+
         if self.cache_in_memory and self.hash in MEMORY_CACHE:
             del MEMORY_CACHE[self.hash]
 
@@ -290,6 +292,9 @@ class Future:
                 write_track_file(path, specific_out_bytes, self, self.cache, write_merkl_file)
 
     def eval(self):
+        if self._val is not None:
+            return self._val
+
         if self.in_cache():
             if isinstance(self.out_name, int):
                 if self.out_name <= 5:
@@ -305,6 +310,7 @@ class Future:
         if self.cache_in_memory:
             MEMORY_CACHE[self.hash] = specific_out
 
+        self._val = specific_out
         return specific_out
 
     def _eval(self):
@@ -468,6 +474,11 @@ class Future:
 
         with open(path + '.merkl', 'rb') as f:
             return dill.load(f)
+
+    @property
+    def v(self):
+        # Short hand for getting the value
+        return self.eval()
 
 
 # Override all the operators of Future to raise a specific exception when used

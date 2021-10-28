@@ -323,7 +323,7 @@ class TestCache(TestCaseWithMerklRepo):
             called = True
             return my_task(3)
 
-        out = my_pipeline() # this should cache the Future output from my_task, but we neve evaluate it
+        out = my_pipeline() # this should cache the Future output from my_task, but we never evaluate it
         self.assertTrue(called)
 
         called = False
