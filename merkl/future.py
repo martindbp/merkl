@@ -459,9 +459,12 @@ class Future:
         raise FutureAccessError
 
     @classmethod
-    def from_file(cls, path):
+    def from_file(cls, path, raise_file_not_found=True):
         if not os.path.exists(path + '.merkl'):
-            raise FileNotFoundError(path + '.merkl')
+            if raise_file_not_found:
+                raise FileNotFoundError(path + '.merkl')
+            else:
+                return None
 
         with open(path + '.merkl', 'rb') as f:
             return dill.load(f)
