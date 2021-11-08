@@ -153,7 +153,7 @@ def validate_resolve_deps(deps):
         elif isinstance(dep, bytes):
             dep = dep.decode('utf-8')
         elif isinstance(dep, Future):
-            dep =  f'<Future {dep.hash}>'
+            dep =  f'<Future {dep.fn_descriptive_name} {dep.hash}>'
         elif isinstance(dep, FileRef) or isinstance(dep, DirRef):
             dep = dep.hash_repr()
         elif not isinstance(dep, str):

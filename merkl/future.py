@@ -45,7 +45,7 @@ class Future:
         '_fn', 'single_fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_deps_args_hash', '_deps_hash', '_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'task_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
-        '_parent_futures', 'cache_in_memory', 'ignore_args', '_val',
+        '_parent_futures', 'cache_in_memory', 'ignore_args', '_val', '_fn_descriptive_name',
     ]
 
     def __init__(
@@ -106,6 +106,7 @@ class Future:
         self.outs_shared_futures = None
         self._parent_futures = None
         self._val = None
+        self._fn_descriptive_name = None
 
     @property
     def fn(self):
@@ -406,7 +407,9 @@ class Future:
 
     @property
     def fn_descriptive_name(self):
-        return function_descriptive_name(self.fn)
+        if not hasattr(self, '_fn_descriptive_name') or self._fn_descriptive_name is None:
+            self._fn_descriptive_name = function_descriptive_name(self.fn)
+        return self._fn_descriptive_name
 
     def __repr__(self):
         return f'<Future: {self.hash[:8]}>'
