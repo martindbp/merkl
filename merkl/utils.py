@@ -112,6 +112,8 @@ class FunctionDep(NamedTuple):
 
 
 def find_function_deps(f):
+    from merkl.future import Future
+
     module = getmodule(f)
     try:
         dedented_source = textwrap.dedent(inspect.getsource(f))
@@ -132,6 +134,10 @@ def find_function_deps(f):
         dep = module.__dict__.get(node.id)
 
         if dep is None:
+            continue
+
+        if isinstance(dep, Future):
+            deps.append(FunctionDep(node.id, dep))
             continue
 
         if not isfunction(dep) and not ismodule(dep):
