@@ -93,8 +93,11 @@ def get_merkl_file_hash(path):
     if not os.path.exists(path + '.merkl'):
         return None
 
-    with open(path + '.merkl', 'rb') as f:
-        return dill.load(f).hash
+    try:
+        with open(path + '.merkl', 'rb') as f:
+            return dill.load(f).hash
+    except:
+        raise Exception(f'Unable to deserialize .merkl file: {path}.merkl')
 
 
 def write_track_file(path, content_bytes, future, cache=merkl.cache.SqliteCache, write_merkl_file=False):
