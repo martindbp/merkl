@@ -5,6 +5,10 @@ development and experimentation, but also easy to deploy to production without
 modifications. Results are cached using Merkle hashes of the code and inputs as
 keys, greatly simplifying caching and reducing the need for a feature store.
 
+NOTE: this project is not production ready and maybe never will be. At this
+point I'm the only user. If you're interested in talking about it I can be
+reached at me@martindbp.com.
+
 ## Tour and examples
 
 In MerkL, pipelines are built using functions decorated with the `task` decorator. When a task is called, the function
