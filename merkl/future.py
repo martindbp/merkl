@@ -222,7 +222,12 @@ class Future:
             if not write_merkl_file:
                 continue
 
-            output_file_merkl_hash = get_merkl_file_hash(output_file)
+            try:
+                output_file_merkl_hash = get_merkl_file_hash(output_file)
+            except TypeError:
+                logger.warning(f'Unable to deserialize .merkl file for {output_file}')
+                output_file_merkl_hash = None
+
             if output_file_merkl_hash == self.hash:
                 return True
 
