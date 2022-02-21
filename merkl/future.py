@@ -270,7 +270,7 @@ class Future:
                 deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn_descriptive_name} out {self.hash} slow')
                 return deserialized, val
 
-    def clear_cache(self):
+    def clear_cache(self, delete_output_files=False):
         self._val = None
 
         if self.cache_in_memory and self.hash in MEMORY_CACHE:
@@ -280,6 +280,14 @@ class Future:
             return
 
         self.cache.clear(self.hash)
+
+        if delete_output_files:
+            for output_file, write_merkl_file in self.output_files or []:
+                if os.path.exists(output_file):
+                    os.remove(output_file)
+                merkl_file = output_file + '.merkl'
+                if write_merkl_file and os.path.exists(merkl_file):
+                    os.remove(merkl_file)
 
     def write_output_files(self, specific_out, specific_out_bytes):
         for path, write_merkl_file in self.output_files or []:
