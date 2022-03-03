@@ -36,7 +36,7 @@ def _code_args_serializer_default(obj, fn_name):
     return str(dill.dumps(obj))
 
 
-FUTURE_STATE_EXCLUDED = ['bound_args', '_fn', 'single_fn', 'outs_shared_futures', '_parent_futures', '_val']
+FUTURE_STATE_EXCLUDED = ['bound_args', '_fn', 'single_fn', 'outs_shared_futures', '_parent_futures', '_val', 'on_completed']
 
 deps_hash_cache = {}
 
@@ -45,7 +45,7 @@ class Future:
         '_fn', 'single_fn', 'fn_code_hash', 'outs', 'out_name', 'deps', 'cache', 'serializer', 'bound_args',
         'outs_shared_cache', '_hash', '_deps_args_hash', '_deps_hash', '_args_hash', 'meta', 'is_input', 'output_files', 'is_pipeline',
         'parent_pipeline_future', 'invocation_id', 'task_id', 'batch_idx', 'cache_temporarily', 'outs_shared_futures',
-        '_parent_futures', 'cache_in_memory', 'ignore_args', '_val', '_fn_descriptive_name',
+        '_parent_futures', 'cache_in_memory', 'ignore_args', 'on_completed', '_val', '_fn_descriptive_name',
     ]
 
     def __init__(
@@ -104,6 +104,7 @@ class Future:
         self.cache_in_memory = cache_in_memory
         self.ignore_args = ignore_args
         self.outs_shared_futures = None
+        self.on_completed = None
         self._parent_futures = None
         self._val = None
         self._fn_descriptive_name = None
@@ -330,6 +331,10 @@ class Future:
             MEMORY_CACHE[self.hash] = specific_out
 
         self._val = specific_out
+
+        if self.on_completed is not None:
+            self.on_completed()
+
         return specific_out
 
     def _eval(self):

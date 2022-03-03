@@ -666,6 +666,22 @@ class TestTask(TestCaseWithMerklRepo):
         self.assertEqual(out.hash, out2.hash)
         self.assertEqual(out.eval(), out2.eval())
 
+    def test_on_completed(self):
+        message = None
+
+        @task(serializer=json)
+        def my_task(asd):
+            nonlocal message
+            message = 'hello world'
+            return 2*asd
+
+        f = my_task(4)
+        def _handler():
+            self.assertEqual(message, 'hello world')
+
+        f.on_completed = _handler
+        f.eval()
+
 
 if __name__ == '__main__':
     unittest.main()
