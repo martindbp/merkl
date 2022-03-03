@@ -267,7 +267,12 @@ class Future:
                 with open(output_file, 'rb') as f:
                     val = f.read()
 
-                deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn_descriptive_name} out {self.hash} slow')
+                try:
+                    deserialized = log_if_slow(lambda: self.serializer.loads(val), f'Deserializing {self.fn_descriptive_name} out {self.hash} slow')
+                except:
+                    logger.error(f'Unable to deserialize {output_file}')
+                    raise
+
                 return deserialized, val
 
     def clear_cache(self, delete_output_files=False):
