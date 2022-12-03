@@ -7,12 +7,7 @@ except ImportError: # for pip <= 9.0.3
     from pip.req import parse_requirements
 
 
-try:
-    import pypandoc
-    long_description = pypandoc.convert('README.md', 'rst')
-except:
-    long_description = open('README.md', 'r').read()
-
+long_description = open('README.md', 'r').read()
 
 install_reqs = parse_requirements('requirements.txt', session='hack')
 reqs = [str(ir.requirement) for ir in install_reqs]
@@ -24,6 +19,7 @@ setup(
     version="0.1",
     description="MerkL",
     long_description=long_description,
+    long_description_content_type='text/markdown',
     author="Martin Pettersson",
     author_email="me@martindbp.com",
     url="https://github.com/martindbp/merkl",
