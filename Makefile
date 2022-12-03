@@ -7,3 +7,8 @@ test:
 
 readme:
 	cd docs && ./compile_readme
+
+release:
+	python setup.py sdist
+	VERSION=$$(cat setup.py | grep "version" | grep -Eo "[0-9]\.[0-9]\.?[0-9]?") ; \
+	twine upload dist/merkl-$$VERSION.tar.gz
