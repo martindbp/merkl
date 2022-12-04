@@ -16,7 +16,7 @@ setup(
     name="merkl",
     packages=find_packages(),
     entry_points={"console_scripts": ['merkl = merkl:main']},
-    version="0.2",
+    version="0.3",
     description="MerkL",
     long_description=long_description,
     long_description_content_type='text/markdown',
