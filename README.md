@@ -9,6 +9,10 @@ NOTE: this project is not production ready and maybe never will be. At this
 point I'm the only user. If you're interested in talking about it I can be
 reached at me@martindbp.com.
 
+## Installation
+
+`pip install merkl`
+
 ## Tour and examples
 
 In MerkL, pipelines are built using functions decorated with the `task` decorator. When a task is called, the function
@@ -452,3 +456,14 @@ TBD
 ### Wrapping shell commands
 
 TBD
+
+## Dev Notes
+
+Releasing a new version:
+
+1. Bump version in setup.py
+2. Commit
+3. `git tag $VERSION`
+4. `make release`. This bundles the package and uploads it using twine
+
+Note that twine is required: `pip install twine`
